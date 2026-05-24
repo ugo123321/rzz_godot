@@ -1,7 +1,12 @@
 extends Node
 class_name CombatDirector
 
+const EffectHelperScript = preload("res://scripts/utils/effect_helper.gd")
+
 signal resolve_finished
+
+const SLASH_HIT_FX_SCALE := 1.35
+const SLASH_HIT_FX_DRAW_SCALE := 1.8
 
 var resolving := false
 var round_attack_resolved := true
@@ -9,7 +14,13 @@ var pending_hits: Array = []
 var resolve_timer := 0.0
 var damage_numbers: Array = []
 var afterimages: Array = []
+var slash_hit_fx: Array = []
 var _death_stagger_index := 0
+var _slash_hit_frames: SpriteFrames
+
+
+func _ready() -> void:
+	_slash_hit_frames = EffectHelperScript.build_effect_frames("hit_a")
 
 
 func reset_for_stage() -> void:
@@ -18,6 +29,7 @@ func reset_for_stage() -> void:
 	resolve_timer = 0.0
 	damage_numbers.clear()
 	afterimages.clear()
+	slash_hit_fx.clear()
 	_death_stagger_index = 0
 	round_attack_resolved = true
 
@@ -28,6 +40,7 @@ func begin_round_attack() -> void:
 	resolving = false
 	resolve_timer = 0.0
 	afterimages.clear()
+	slash_hit_fx.clear()
 	_death_stagger_index = 0
 
 
@@ -55,7 +68,11 @@ func should_monsters_attack(player: BattlePlayer) -> bool:
 
 
 func has_combat_presentation() -> bool:
-	return resolving or not afterimages.is_empty() or not damage_numbers.is_empty()
+	return resolving or not afterimages.is_empty() or not damage_numbers.is_empty() or has_active_hit_fx()
+
+
+func has_active_hit_fx() -> bool:
+	return not slash_hit_fx.is_empty()
 
 
 func schedule_death_fade() -> float:
@@ -89,53 +106,61 @@ func update_afterimages(delta: float) -> void:
 		i -= 1
 
 
-func get_path_preview_targets(path: Array, player: BattlePlayer, targets: Array) -> Dictionary:
+func get_path_preview_hit_counts(path: Array, player: BattlePlayer, targets: Array) -> Dictionary:
 	var result := {}
 	if path.size() < 2 or player == null:
 		return result
 	var hit_pad := player.get_path_hit_pad()
-	for i in range(path.size() - 1):
-		var from: Vector2 = path[i]
-		var to: Vector2 = path[i + 1]
-		for m in targets:
-			if _is_non_targetable(m):
-				continue
-			var hit_r := 13.0
-			if m.has_method("get_hitbox_radius"):
-				hit_r = m.get_hitbox_radius()
-			if MathUtils.point_segment_distance(m.global_position, from, to) <= hit_r + hit_pad:
-				result[m.get_instance_id()] = m
+	for m in targets:
+		if _is_non_targetable(m):
+			continue
+		var hit_r := 13.0
+		if m.has_method("get_hitbox_radius"):
+			hit_r = m.get_hitbox_radius()
+		var count := MathUtils.count_path_circle_hits(path, m.global_position, hit_r + hit_pad)
+		if count > 0:
+			var id: int = m.get_instance_id()
+			result[id] = count
 	return result
 
 
+static func path_preview_ring_color(hit_count: int) -> Color:
+	match clampi(hit_count, 0, 4):
+		1:
+			return Color(1.0, 0.92, 0.2, 0.9)
+		2:
+			return Color(1.0, 0.58, 0.1, 0.92)
+		3:
+			return Color(1.0, 0.32, 0.18, 0.94)
+		_:
+			return Color(0.95, 0.18, 0.55, 0.95)
+
+
 func update_path_preview_highlights(path: Array, player: BattlePlayer, targets: Array) -> void:
-	var preview := get_path_preview_targets(path, player, targets) if path.size() >= 2 and player != null else {}
+	var preview := get_path_preview_hit_counts(path, player, targets) if path.size() >= 2 and player != null else {}
 	for m in targets:
 		if not is_instance_valid(m):
 			continue
-		var on := preview.has(m.get_instance_id())
-		if m.get("path_target_highlight") == null:
+		if m.get("path_target_hit_count") == null:
 			continue
-		if m.path_target_highlight != on:
-			m.path_target_highlight = on
+		var count := int(preview.get(m.get_instance_id(), 0))
+		if m.path_target_hit_count != count:
+			m.path_target_hit_count = count
 			m.queue_redraw()
 
 
 func clear_path_preview_highlights(targets: Array) -> void:
 	for m in targets:
-		if not is_instance_valid(m) or m.get("path_target_highlight") == null:
+		if not is_instance_valid(m) or m.get("path_target_hit_count") == null:
 			continue
-		if m.path_target_highlight:
-			m.path_target_highlight = false
+		if m.path_target_hit_count != 0:
+			m.path_target_hit_count = 0
 			m.queue_redraw()
 
 
 func queue_hit(monster: Node, segment_index: int, hit_pos: Vector2) -> void:
 	if monster == null or not is_instance_valid(monster):
 		return
-	for hit in pending_hits:
-		if hit.monster == monster:
-			return
 	pending_hits.append({
 		"monster": monster,
 		"segment_index": segment_index,
@@ -190,10 +215,9 @@ func _apply_hit(player: BattlePlayer, hit: Dictionary) -> void:
 	spawn_damage_number(hit.pos, int(result.get("damage", 0)), bool(dmg_info.is_crit))
 	var battle := get_tree().get_first_node_in_group("battle")
 	if battle:
-		if battle.particles:
-			battle.particles.hit_spark(hit.pos, bool(dmg_info.is_crit))
-			battle.particles.slash_trail(hit.pos, seg_ang)
-			battle.particles.slash_trail(player.global_position, dash_ang)
+		if int(result.get("damage", 0)) > 0:
+			var fx_scale := 1.15 if bool(dmg_info.is_crit) else 1.0
+			spawn_slash_hit_fx(hit.pos, seg_ang, fx_scale)
 		if bool(dmg_info.is_crit):
 			battle.shake_camera(6.0 + mini(float(combo_count) * 0.15, 4.0), 0.14)
 		else:
@@ -205,11 +229,16 @@ func _apply_hit(player: BattlePlayer, hit: Dictionary) -> void:
 		battle.abilities.on_combo_hit(combo_count, hit.pos, seg_ang, player)
 
 	if bool(result.get("started_dying", false)):
+		var tint := Color.WHITE
+		var fx_scale := 1.0
+		if monster is BattleMonster:
+			var bm := monster as BattleMonster
+			tint = bm.color
+			fx_scale = clampf(bm.get_hitbox_radius() / 13.0, 0.85, 1.8)
 		if battle and battle.particles:
-			var tint := Color.WHITE
-			if monster is BattleMonster:
-				tint = monster.color
-			battle.particles.death_effect(monster.global_position, tint)
+			battle.particles.death_effect(monster.global_position, tint, fx_scale)
+		if battle:
+			battle.shake_camera(4.5 + fx_scale * 1.5, 0.1)
 		EventBus.monster_killed.emit(monster)
 
 
@@ -240,6 +269,51 @@ func update_damage_numbers(delta: float) -> void:
 			dn["pos"] = dn.pos + Vector2(0.0, float(dn.get("vy", 0.0)) * delta)
 			damage_numbers[i] = dn
 		i -= 1
+
+
+func spawn_slash_hit_fx(pos: Vector2, angle: float, scale_mul: float = 1.0) -> void:
+	if _slash_hit_frames == null or _slash_hit_frames.get_frame_count(EffectHelperScript.ANIM_PREVIEW) <= 0:
+		return
+	slash_hit_fx.append({
+		"pos": pos,
+		"angle": angle,
+		"anim_t": 0.0,
+		"duration": EffectHelperScript.one_shot_anim_duration(_slash_hit_frames),
+		"scale": SLASH_HIT_FX_SCALE * scale_mul,
+	})
+
+
+func update_slash_hit_fx(delta: float) -> void:
+	if slash_hit_fx.is_empty() or delta <= 0.0:
+		return
+	for i in range(slash_hit_fx.size() - 1, -1, -1):
+		var fx: Dictionary = slash_hit_fx[i]
+		fx["anim_t"] = float(fx.anim_t) + delta
+		if float(fx.anim_t) >= float(fx.duration):
+			slash_hit_fx.remove_at(i)
+		else:
+			slash_hit_fx[i] = fx
+
+
+func draw_slash_hit_fx(canvas: Node2D) -> void:
+	if _slash_hit_frames == null:
+		return
+	for fx in slash_hit_fx:
+		var tex := EffectHelperScript.animation_frame_texture_once(_slash_hit_frames, float(fx.anim_t))
+		if tex == null:
+			continue
+		var life_t := clampf(float(fx.anim_t) / maxf(0.001, float(fx.duration)), 0.0, 1.0)
+		var alpha := 1.0 - life_t * 0.25
+		var draw_scale := SLASH_HIT_FX_DRAW_SCALE * float(fx.scale)
+		var local_center: Vector2 = Vector2(fx.pos) - canvas.global_position
+		SpriteHelper.draw_effect_texture(
+			canvas,
+			tex,
+			local_center,
+			float(fx.get("angle", 0.0)),
+			Vector2.ONE * draw_scale,
+			Color(1.0, 1.0, 1.0, alpha)
+		)
 
 
 func _finish_resolve(player: BattlePlayer) -> void:

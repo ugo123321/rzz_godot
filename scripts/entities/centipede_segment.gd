@@ -5,7 +5,7 @@ var boss_ref
 var segment_index := 0
 var alive := true
 var vulnerable_mark := false
-var path_target_highlight := false
+var path_target_hit_count := 0
 
 
 func get_hitbox_radius() -> float:
@@ -44,8 +44,9 @@ func _draw() -> void:
 	var frozen: bool = boss_ref.is_segment_frozen(self)
 	var body := Color("#5a88b8") if frozen else Color("#4a6858")
 	var edge := Color("#2a3830") if not frozen else Color("#88c8f0")
-	if path_target_highlight:
-		draw_arc(Vector2.ZERO, r + 4.0, 0.0, TAU, 24, Color(1.0, 0.92, 0.2, 0.85 * alpha), 3.0)
+	if path_target_hit_count > 0:
+		var ring := CombatDirector.path_preview_ring_color(path_target_hit_count)
+		draw_arc(Vector2.ZERO, r + 4.0, 0.0, TAU, 24, Color(ring.r, ring.g, ring.b, ring.a * alpha), 3.0)
 	draw_set_transform(Vector2.ZERO, boss_ref.get_segment_angle(segment_index), Vector2.ONE)
 	draw_rect(Rect2(-w * 0.5, -h * 0.5, w, h), Color(edge, alpha))
 	draw_rect(Rect2(-w * 0.5 + 2, -h * 0.5 + 2, w - 4, h - 5), Color(body, alpha))

@@ -20,3 +20,6 @@ __pycache__/
 
 # Credentials
 .godot/export_credentials.cfg
+
+# Cursor migration backups (local only; paths can exceed Windows MAX_PATH)
+tools/cursor-migration-backup-*/

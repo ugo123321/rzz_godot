@@ -1,22 +1,54 @@
 extends RefCounted
 class_name PixelUiHelper
 
-const FONT_PATH := "res://assets/ui/Fonts/FantasyRPGtext (size 8).ttf"
-const TITLE_FONT_PATH := "res://assets/ui/Fonts/FantasyRPGtitle (size 11).ttf"
+const UI_FONT_PATH := "res://assets/ui/Fonts/NotoSansSC-Regular.otf"
 const EXP_BAR_HEIGHT := 18.0
 const PIXEL_FONT_BASE := 8
 const TITLE_FONT_BASE := 11
 
-static var _font: Font
-static var _title_font: Font
+static var _ui_font: Font
 
 
-static func _prepare_pixel_font(path: String) -> Font:
-	var font := load(path) as Font
-	if font is FontFile:
-		font.antialiasing = TextServer.FONT_ANTIALIASING_NONE
-		font.hinting = TextServer.HINTING_NONE
-	return font
+static func _load_ui_font() -> Font:
+	if not ResourceLoader.exists(UI_FONT_PATH):
+		return null
+	var loaded := load(UI_FONT_PATH)
+	if loaded is FontFile:
+		var font := (loaded as FontFile).duplicate(true) as FontFile
+		font.modulate_color_glyphs = true
+		font.clear_cache()
+		return font
+	return loaded as Font
+
+
+static func _ensure_fonts_loaded() -> void:
+	if _ui_font == null:
+		_ui_font = _load_ui_font()
+
+
+static func get_ui_font(_use_title: bool = false) -> Font:
+	_ensure_fonts_loaded()
+	if _ui_font != null:
+		return _ui_font
+	return ThemeDB.fallback_font
+
+
+static func get_cjk_font() -> Font:
+	return get_ui_font()
+
+
+static func apply_ui_font(control: Control) -> void:
+	var font := get_ui_font()
+	if font == null:
+		return
+	control.add_theme_font_override("font", font)
+
+
+static func apply_ui_font_tree(root: Node) -> void:
+	if root is Control:
+		apply_ui_font(root as Control)
+	for child in root.get_children():
+		apply_ui_font_tree(child)
 
 
 static func snap_pixel_font_size(size: int, base: int = PIXEL_FONT_BASE) -> int:
@@ -28,15 +60,19 @@ static func _snap_pos(pos: Vector2) -> Vector2:
 
 
 static func get_font() -> Font:
-	if _font == null:
-		_font = _prepare_pixel_font(FONT_PATH)
-	return _font
+	return get_ui_font()
 
 
 static func get_title_font() -> Font:
-	if _title_font == null:
-		_title_font = _prepare_pixel_font(TITLE_FONT_PATH)
-	return _title_font
+	return get_ui_font()
+
+
+static func _get_font_for_text(_text: String, _use_title_font: bool = false) -> Font:
+	return get_ui_font()
+
+
+static func _text_shadow_color(color: Color) -> Color:
+	return Color(color.r * 0.28, color.g * 0.28, color.b * 0.28, color.a)
 
 
 static func draw_pixel_panel(
@@ -67,13 +103,7 @@ static func draw_pixel_text(
 ) -> void:
 	if text.is_empty():
 		return
-	var font := get_title_font() if use_title_font else get_font()
-	if font == null:
-		font = ThemeDB.fallback_font
-	font_size = snap_pixel_font_size(
-		font_size,
-		TITLE_FONT_BASE if use_title_font else PIXEL_FONT_BASE
-	)
+	var font := _get_font_for_text(text, use_title_font)
 	var size := font.get_string_size(text, align, -1, font_size)
 	var draw_pos := pos
 	match align:
@@ -90,8 +120,7 @@ static func draw_pixel_text(
 			draw_pos.y -= font.get_ascent(font_size)
 	draw_pos = _snap_pos(draw_pos)
 	var shadow := 1
-	var shadow_color := Color("#1a1008")
-	shadow_color.a = color.a
+	var shadow_color := _text_shadow_color(color)
 	canvas.draw_string(
 		font, draw_pos + Vector2(shadow, shadow), text,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, shadow_color
@@ -108,30 +137,26 @@ static func draw_centered_text(
 	center: Vector2,
 	font_size: int,
 	color: Color,
-	outline: bool = false
+	outline: bool = false,
+	use_title_font: bool = false
 ) -> Vector2:
 	if text.is_empty():
 		return Vector2.ZERO
-	var font := get_font()
-	if font == null:
-		font = ThemeDB.fallback_font
-	font_size = snap_pixel_font_size(font_size)
+	var font := _get_font_for_text(text, use_title_font)
 	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 	var text_pos := _snap_pos(Vector2(
 		center.x - text_size.x * 0.5,
 		center.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
 	))
 	if outline:
-		var outline_color := Color("#1a1008")
-		outline_color.a = color.a
+		var outline_color := _text_shadow_color(color)
 		for offset in [Vector2(-1, 0), Vector2(1, 0), Vector2(0, -1), Vector2(0, 1)]:
 			canvas.draw_string(
 				font, text_pos + offset, text,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, outline_color
 			)
 	else:
-		var shadow_color := Color("#1a1008")
-		shadow_color.a = color.a
+		var shadow_color := _text_shadow_color(color)
 		canvas.draw_string(
 			font, text_pos + Vector2(1, 1), text,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, shadow_color
@@ -141,6 +166,22 @@ static func draw_centered_text(
 		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, color
 	)
 	return text_size
+
+
+static func draw_message_style_text(
+	canvas: CanvasItem,
+	text: String,
+	center: Vector2,
+	font_size: int,
+	color: Color
+) -> void:
+	draw_centered_text(
+		canvas,
+		text,
+		Vector2(roundi(center.x), roundi(center.y)),
+		font_size,
+		color
+	)
 
 
 static func draw_pixel_text_stroke(
@@ -232,23 +273,46 @@ static func draw_pixel_icon(canvas: CanvasItem, sprite: Array, center: Vector2, 
 			canvas.draw_rect(Rect2(ox + col * px, oy + row * px, px, px), Color(str(hex)))
 
 
+static func get_combo_font_size(combo: int) -> int:
+	if combo < 2:
+		return PIXEL_FONT_BASE * 2
+	var t := clampf(float(combo - 2) / 28.0, 0.0, 1.0)
+	var curved := pow(t, 0.62)
+	var raw := lerpf(16.0, 56.0, curved)
+	return snap_pixel_font_size(int(round(raw)))
+
+
 static func get_combo_colors(combo: int) -> Dictionary:
-	var t := clampf(float(combo - 2) / 18.0, 0.0, 1.0)
+	var t := clampf(float(combo - 2) / 30.0, 0.0, 1.0)
 	var main: Color
 	var sub: Color
-	if t < 0.45:
-		var u := t / 0.45
-		main = _lerp_hex_color("#fff8c0", "#ffc830", u)
-		sub = _lerp_hex_color("#ffe060", "#ff9838", u)
-	elif t < 0.8:
-		var u := (t - 0.45) / 0.35
-		main = _lerp_hex_color("#ffc830", "#ff6020", u)
-		sub = _lerp_hex_color("#ff9838", "#ff4028", u)
+	var glow: Color
+	if t < 0.2:
+		var u := t / 0.2
+		main = _lerp_hex_color("#ffe7c8", "#ffe850", u)
+		sub = _lerp_hex_color("#ffd8a8", "#ffc830", u)
+		glow = _lerp_hex_color("#ffe0b0", "#ffb020", u)
+	elif t < 0.45:
+		var u := (t - 0.2) / 0.25
+		main = _lerp_hex_color("#ffe850", "#ff9820", u)
+		sub = _lerp_hex_color("#ffc830", "#ff7018", u)
+		glow = _lerp_hex_color("#ffb020", "#ff5810", u)
+	elif t < 0.7:
+		var u := (t - 0.45) / 0.25
+		main = _lerp_hex_color("#ff9820", "#ff4028", u)
+		sub = _lerp_hex_color("#ff7018", "#ff2030", u)
+		glow = _lerp_hex_color("#ff5810", "#ff1020", u)
+	elif t < 0.88:
+		var u := (t - 0.7) / 0.18
+		main = _lerp_hex_color("#ff4028", "#ff2088", u)
+		sub = _lerp_hex_color("#ff2030", "#ff40c0", u)
+		glow = _lerp_hex_color("#ff1020", "#ff60d0", u)
 	else:
-		var u := (t - 0.8) / 0.2
-		main = _lerp_hex_color("#ff6020", "#fff8e8", u)
-		sub = _lerp_hex_color("#ff4028", "#ff3020", u)
-	return {"main": main, "sub": sub}
+		var u := (t - 0.88) / 0.12
+		main = _lerp_hex_color("#ff2088", "#fff8ff", u)
+		sub = _lerp_hex_color("#ff40c0", "#ffd0ff", u)
+		glow = _lerp_hex_color("#ff60d0", "#ffffff", u)
+	return {"main": main, "sub": sub, "glow": glow}
 
 
 static func get_play_area_bottom(viewport_h: float) -> float:
@@ -470,21 +534,30 @@ static func draw_combo_banner(
 	var fading := player.combo_count < 2.0
 	var fade_dur := 0.4 if fading else 0.6
 	var alpha := clampf(player.combo_display_timer / fade_dur, 0.0, 1.0) if fading else 1.0
-	var y: int = roundi(float(layout.get("combo_y", 0.0)) + 28.0)
-	var main_size := snap_pixel_font_size(maxi(10, int(round(16.0 + mini(float(combo - 2) * 1.2, 8.0)))))
-	var sub_size := PIXEL_FONT_BASE
+	var cx := viewport_w * 0.5
+	var cy := float(layout.get("combo_y", 0.0)) + 28.0
+	var main_size := get_combo_font_size(combo)
+	var sub_size := snap_pixel_font_size(maxi(PIXEL_FONT_BASE, int(round(float(main_size) * 0.52))))
 	var colors := get_combo_colors(combo)
-	var cx := roundi(viewport_w * 0.5)
-	var main_color: Color = colors.main
-	main_color.a *= alpha
-	var sub_color: Color = colors.sub
-	sub_color.a *= alpha
+	var punch_t := 0.0
+	if not fading:
+		punch_t = clampf((player.combo_display_timer - 0.32) / 0.28, 0.0, 1.0)
+	var punch_scale := 1.0 + punch_t * (0.1 + float(mini(combo, 36)) * 0.006)
+	var main_color: Color = colors["main"]
+	main_color.a = alpha
+	var sub_color: Color = colors["sub"]
+	sub_color.a = alpha
 	var main_text := "连击×%d" % combo
 	var sub_text := "+%d%%" % player.get_combo_bonus_percent()
-	draw_centered_text(canvas, main_text, Vector2(cx, y - 6), main_size, main_color, true)
-	draw_centered_text(
-		canvas, sub_text, Vector2(cx, y + main_size - 2), sub_size, sub_color, true
-	)
+	if combo >= 5:
+		var glow_size := snap_pixel_font_size(int(round(float(main_size) * 1.14)))
+		var glow_color: Color = colors["glow"]
+		glow_color.a = clampf(0.18 + float(combo - 4) * 0.012, 0.18, 0.52) * alpha
+		draw_message_style_text(canvas, main_text, Vector2(cx, cy - 6.0), glow_size, glow_color)
+	canvas.draw_set_transform(Vector2(cx, cy), 0.0, Vector2(punch_scale, punch_scale))
+	draw_message_style_text(canvas, main_text, Vector2(0.0, -6.0), main_size, main_color)
+	draw_message_style_text(canvas, sub_text, Vector2(0.0, float(main_size - 2)), sub_size, sub_color)
+	canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 static func draw_exp_bar(
@@ -544,10 +617,8 @@ static func draw_exp_bar(
 static func draw_message_panel(canvas: CanvasItem, text: String, center: Vector2, alpha: float = 1.0) -> void:
 	if text.is_empty() or alpha <= 0.0:
 		return
-	var font := get_font()
-	if font == null:
-		font = ThemeDB.fallback_font
 	var font_size := PIXEL_FONT_BASE * 2
+	var font := _get_font_for_text(text)
 	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
 	var pad_x := 12.0
 	var pad_y := 8.0
@@ -561,8 +632,8 @@ static func draw_message_panel(canvas: CanvasItem, text: String, center: Vector2
 	draw_pixel_panel(canvas, Rect2(bx, by, box_w, box_h), fill, border, 2)
 	var text_color := Color("#ffe7c8")
 	text_color.a *= alpha
-	draw_centered_text(
-		canvas, text, Vector2(roundi(center.x), roundi(center.y)), font_size, text_color
+	draw_message_style_text(
+		canvas, text, center, font_size, text_color
 	)
 
 
@@ -571,9 +642,7 @@ static func draw_buff_notice(canvas: CanvasItem, notice: String, viewport_size: 
 		return
 	var text := notice.replace("获得强化: ", "")
 	var font_size := PIXEL_FONT_BASE * 2
-	var font := get_font()
-	if font == null:
-		font = ThemeDB.fallback_font
+	var font := _get_font_for_text(text)
 	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
 	var pad_x := 14.0
 	var pad_y := 10.0
@@ -601,10 +670,12 @@ static func _lerp_hex_color(c1: String, c2: String, t: float) -> Color:
 
 static func _parse_hex_color(hex: String) -> Array:
 	var h := hex.replace("#", "")
+	if h.length() < 6:
+		return [255.0, 255.0, 255.0]
 	return [
-		float("0x" + h.substr(0, 2)),
-		float("0x" + h.substr(2, 2)),
-		float("0x" + h.substr(4, 2)),
+		float(h.substr(0, 2).hex_to_int()),
+		float(h.substr(2, 2).hex_to_int()),
+		float(h.substr(4, 2).hex_to_int()),
 	]
 
 

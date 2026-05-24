@@ -1,6 +1,8 @@
 extends Control
 class_name PauseMenu
 
+const PixelUi := preload("res://scripts/utils/pixel_ui_helper.gd")
+
 enum View { PAUSE, DEBUG, DEBUG_UPGRADES }
 
 var battle
@@ -161,6 +163,8 @@ func _build_ui() -> void:
 	upgrades_back_btn.pressed.connect(_close_debug_upgrades)
 	upgrades_box.add_child(upgrades_back_btn)
 
+	PixelUi.apply_ui_font_tree(self)
+
 
 func open_menu() -> void:
 	view = View.PAUSE
@@ -264,7 +268,7 @@ func _rebuild_upgrade_rows() -> void:
 
 		var name_box := VBoxContainer.new()
 		name_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var rarity := str(u.get("rarity", "white"))
+		var rarity := str(u.get("rarity", "blue"))
 		var rarity_color := Color(str(GameConfig.get_upgrade_fx(rarity).get("color_hex", "#ffffff")))
 		var name_label := Label.new()
 		name_label.text = str(u.get("name_cn", id))

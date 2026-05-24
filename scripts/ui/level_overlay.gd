@@ -217,7 +217,7 @@ func _draw_complete(w: float, h: float) -> void:
 
 
 func _draw_pixel_text(text: String, pos: Vector2, font_size: int, color: Color, alpha: float = 1.0) -> void:
-	var font := ThemeDB.fallback_font
+	var font := PixelUiHelper.get_ui_font()
 	var c := color
 	c.a *= alpha
 	draw_string(font, pos - Vector2(font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size).x * 0.5, font_size * 0.35), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, c)

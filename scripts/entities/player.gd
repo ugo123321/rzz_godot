@@ -7,7 +7,10 @@ enum State { IDLE, BULLET_TIME, ATTACKING }
 
 const AUTO_DART_RELEASE_RATIO := 0.42
 const PATH_LINE_WIDTH := 6.0
+const PATH_LINE_COLOR := Color(1.0, 0.85, 0.2, 0.9)
+const PATH_LINE_COLOR_ATTACK := Color(1.0, 0.85, 0.2, 0.35)
 const PATH_HIT_PAD_RATIO := 0.68
+const DRAW_START_FX_SCALE := 1.3
 
 var home_position: Vector2
 var state := State.IDLE
@@ -38,7 +41,10 @@ var combo_damage_bonus := 0.01
 var attack_path: Array[Vector2] = []
 var path_index := 0
 var path_progress := 0.0
-var hit_monsters_this_attack: Dictionary = {}
+var _path_hit_inside: Dictionary = {}
+var _last_attack_pos := Vector2.ZERO
+var _attack_hits_primmed := false
+var hit_projectiles_this_attack: Dictionary = {}
 
 var upgrade_stacks: Dictionary = {}
 var turn_buff_attack_mult := 1.0
@@ -56,12 +62,16 @@ var holy_shield_timer := 0.0
 var holy_shield_charges := 0
 var kill_count_for_vampire := 0
 var heal_bonus := 0.0
-var _last_trigger_visible := false
+var _trigger_ring_fade_t := 0.0
 var death_anim: Dictionary = {}
 var _fail_visual_base_rotation := 0.0
 var _fail_visual_base_position := Vector2.ZERO
 var _auto_dart_cycle_active := false
 var _auto_dart_released := false
+var _draw_start_fx_frames: SpriteFrames
+var _draw_start_fx_t := -1.0
+var _draw_start_fx_duration := 0.0
+var _draw_start_fx_sprite: Sprite2D
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var trigger_area: Area2D = $TriggerArea
@@ -70,11 +80,14 @@ var _auto_dart_released := false
 
 func _ready() -> void:
 	_load_base_stats()
+	_draw_start_fx_frames = EffectHelper.build_effect_frames("air_slash")
+	if _draw_start_fx_frames != null:
+		_draw_start_fx_duration = EffectHelper.one_shot_anim_duration(_draw_start_fx_frames)
 	home_position = global_position
 	_setup_sprite()
 	_update_trigger_radius()
 	path_line.width = PATH_LINE_WIDTH
-	path_line.default_color = Color(1.0, 0.85, 0.2, 0.9)
+	path_line.default_color = PATH_LINE_COLOR
 	path_line.top_level = true
 
 
@@ -167,6 +180,27 @@ func get_trigger_radius() -> float:
 	return maxf(min_r, ratio * ref_w) * size_scale
 
 
+func _get_trigger_ring_fade_duration() -> float:
+	return maxf(0.001, float(GameConfig.get_player_value("trigger_ring_fade_in", 0.35)))
+
+
+func _get_trigger_ring_alpha() -> float:
+	var t := clampf(_trigger_ring_fade_t, 0.0, 1.0)
+	return t * t * (3.0 - 2.0 * t)
+
+
+func _update_trigger_ring_fade(delta: float) -> void:
+	var should_show := state == State.IDLE and is_ki_full()
+	if should_show:
+		if _trigger_ring_fade_t >= 1.0:
+			return
+		_trigger_ring_fade_t = minf(1.0, _trigger_ring_fade_t + delta / _get_trigger_ring_fade_duration())
+		queue_redraw()
+	elif _trigger_ring_fade_t > 0.0:
+		_trigger_ring_fade_t = 0.0
+		queue_redraw()
+
+
 func is_ki_full() -> bool:
 	return ki >= ki_max - 0.01
 
@@ -252,7 +286,7 @@ func begin_stage() -> void:
 	ki_max = round(base_ki * (1.0 + next_turn_ki_bonus))
 	ki = ki_max
 	next_turn_ki_bonus = 0.0
-	_last_trigger_visible = false
+	_trigger_ring_fade_t = 0.0
 	queue_redraw()
 	_update_path_line()
 
@@ -262,8 +296,55 @@ func start_bullet_time() -> void:
 	attack_path.clear()
 	path_index = 0
 	path_progress = 0.0
-	hit_monsters_this_attack.clear()
+	hit_projectiles_this_attack.clear()
+	_play_draw_start_fx()
 	add_path_point(home_position)
+
+
+func _play_draw_start_fx() -> void:
+	if _draw_start_fx_frames == null or _draw_start_fx_duration <= 0.0:
+		return
+	var fx_sprite := _ensure_draw_start_fx_sprite()
+	_draw_start_fx_t = 0.0
+	fx_sprite.visible = true
+	_update_draw_start_fx_sprite()
+
+
+func _ensure_draw_start_fx_sprite() -> Sprite2D:
+	if _draw_start_fx_sprite == null:
+		_draw_start_fx_sprite = Sprite2D.new()
+		_draw_start_fx_sprite.centered = true
+		_draw_start_fx_sprite.z_index = 2
+		SpriteHelper.apply_pixel_art(_draw_start_fx_sprite)
+		add_child(_draw_start_fx_sprite)
+	return _draw_start_fx_sprite
+
+
+func _update_draw_start_fx(delta: float) -> void:
+	if _draw_start_fx_t < 0.0:
+		return
+	_draw_start_fx_t += delta
+	if _draw_start_fx_t >= _draw_start_fx_duration:
+		_draw_start_fx_t = -1.0
+		if _draw_start_fx_sprite:
+			_draw_start_fx_sprite.visible = false
+		return
+	_update_draw_start_fx_sprite()
+
+
+func _update_draw_start_fx_sprite() -> void:
+	if _draw_start_fx_t < 0.0 or _draw_start_fx_frames == null:
+		return
+	var fx_sprite := _ensure_draw_start_fx_sprite()
+	var tex := EffectHelper.animation_frame_texture_once(_draw_start_fx_frames, _draw_start_fx_t)
+	if tex == null:
+		fx_sprite.visible = false
+		return
+	var life_t := clampf(_draw_start_fx_t / maxf(0.001, _draw_start_fx_duration), 0.0, 1.0)
+	fx_sprite.texture = tex
+	fx_sprite.scale = Vector2.ONE * DRAW_START_FX_SCALE
+	fx_sprite.modulate = Color(1.0, 0.98, 0.82, 1.0 - life_t * 0.25)
+	fx_sprite.visible = true
 
 
 func add_path_point(point: Vector2) -> void:
@@ -307,13 +388,20 @@ func start_attack() -> void:
 		battle.abilities.on_resolve_started()
 	path_index = 0
 	path_progress = 0.0
-	hit_monsters_this_attack.clear()
+	_path_hit_inside.clear()
+	_attack_hits_primmed = false
+	_last_attack_pos = attack_path[0]
+	hit_projectiles_this_attack.clear()
+	_apply_path_line_color()
 	_play_anim(SpriteHelper.ANIM_ATTACK)
 
 
 func update_attack(delta: float, combat: CombatDirector, monsters: Array) -> bool:
 	if state != State.ATTACKING or attack_path.size() < 2:
 		return false
+	if not _attack_hits_primmed:
+		_prime_path_start_hits(combat, monsters)
+		_attack_hits_primmed = true
 	var speed := float(GameConfig.get_player_value("attack_speed", 2300))
 	path_progress += speed * delta
 	while path_index < attack_path.size() - 1:
@@ -324,29 +412,64 @@ func update_attack(delta: float, combat: CombatDirector, monsters: Array) -> boo
 			path_index += 1
 			continue
 		if path_progress >= seg_len:
+			_record_path_crossings(_last_attack_pos, to, combat, monsters, path_index)
+			_last_attack_pos = to
 			path_progress -= seg_len
 			path_index += 1
 			continue
 		var t := path_progress / seg_len
-		global_position = from.lerp(to, t)
-		_record_segment_hits(from, to, combat, monsters)
+		var pos := from.lerp(to, t)
+		global_position = pos
+		_record_path_crossings(_last_attack_pos, pos, combat, monsters, path_index)
+		_last_attack_pos = pos
 		return false
 	_finish_attack(combat)
 	return true
 
 
-func _record_segment_hits(from: Vector2, to: Vector2, combat: CombatDirector, monsters: Array) -> void:
+func _prime_path_start_hits(combat: CombatDirector, monsters: Array) -> void:
+	var hit_pad := get_path_hit_pad()
+	var start := attack_path[0]
+	for monster in monsters:
+		if not is_instance_valid(monster) or not monster.is_combat_targetable():
+			continue
+		var hit_r: float = monster.get_hitbox_radius() + hit_pad
+		var id: int = monster.get_instance_id()
+		if start.distance_to(monster.global_position) <= hit_r:
+			_path_hit_inside[id] = true
+			combat.queue_hit(monster, 0, monster.global_position)
+		else:
+			_path_hit_inside[id] = false
+
+
+func _record_path_crossings(
+	prev: Vector2,
+	curr: Vector2,
+	combat: CombatDirector,
+	monsters: Array,
+	segment_index: int,
+) -> void:
+	if prev.distance_squared_to(curr) < 0.0001:
+		return
 	var hit_pad := get_path_hit_pad()
 	for monster in monsters:
 		if not is_instance_valid(monster) or not monster.is_combat_targetable():
 			continue
-		var key := str(monster.get_instance_id())
-		if hit_monsters_this_attack.has(key):
-			continue
-		var dist := MathUtils.point_segment_distance(monster.global_position, from, to)
-		if dist <= monster.get_hitbox_radius() + hit_pad:
-			hit_monsters_this_attack[key] = true
-			combat.queue_hit(monster, path_index, monster.global_position)
+		var hit_r: float = monster.get_hitbox_radius() + hit_pad
+		var center: Vector2 = monster.global_position
+		var id: int = monster.get_instance_id()
+		var inside: bool = bool(_path_hit_inside.get(id, prev.distance_to(center) <= hit_r))
+		for ev in MathUtils.segment_circle_crossings(prev, curr, center, hit_r):
+			if bool(ev.get("enter", false)):
+				if not inside:
+					combat.queue_hit(monster, segment_index, center)
+				inside = true
+			else:
+				inside = false
+		_path_hit_inside[id] = inside
+	var battle := get_tree().get_first_node_in_group("battle") as BattleController
+	if battle:
+		battle.block_projectiles_on_path_segment(prev, curr, segment_index, self)
 
 
 func _finish_attack(combat: CombatDirector) -> void:
@@ -647,17 +770,22 @@ func on_enemy_killed(kill_pos: Vector2) -> void:
 			battle.abilities.spawn_vampire_bat_swarm(kill_pos, self)
 
 
+func _apply_path_line_color() -> void:
+	path_line.default_color = PATH_LINE_COLOR_ATTACK if state == State.ATTACKING else PATH_LINE_COLOR
+
+
 func _update_path_line() -> void:
 	path_line.clear_points()
 	for p in attack_path:
 		path_line.add_point(p)
+	_apply_path_line_color()
 
 
 func begin_fail_death(info: Dictionary) -> void:
 	var entering := death_anim.is_empty() or not bool(death_anim.get("active", false))
 	death_anim = info.duplicate()
 	death_anim["active"] = true
-	_last_trigger_visible = false
+	_trigger_ring_fade_t = 0.0
 	var anim_sprite := _get_sprite()
 	if anim_sprite:
 		if entering:
@@ -709,7 +837,8 @@ func apply_fail_death_visuals(shake: float, fall: float, alpha: float) -> void:
 	modulate = Color(1.0, 1.0, 1.0, alpha)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_update_draw_start_fx(delta)
 	if is_fail_death_pose():
 		path_line.visible = false
 		queue_redraw()
@@ -717,10 +846,7 @@ func _process(_delta: float) -> void:
 	if state == State.IDLE:
 		_apply_combat_modulate()
 	path_line.visible = attack_path.size() >= 2
-	var show_trigger := state == State.IDLE and is_ki_full()
-	if show_trigger != _last_trigger_visible:
-		_last_trigger_visible = show_trigger
-		queue_redraw()
+	_update_trigger_ring_fade(delta)
 
 
 func _should_show_hp_bar() -> bool:
@@ -747,11 +873,12 @@ func _draw() -> void:
 		draw_circle(pos - global_position, get_effective_radius() * 0.65, Color(0.45, 0.35, 0.65, 0.55))
 	if _should_show_hp_bar():
 		_draw_hp_bar()
-	if not _last_trigger_visible:
+	var ring_alpha := _get_trigger_ring_alpha()
+	if ring_alpha <= 0.0:
 		return
-	var radius := get_trigger_radius()
-	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(1.0, 1.0, 1.0, 0.35), 2.0)
-	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(1.0, 0.9, 0.3, 0.12), radius * 2.0)
+	var radius := get_trigger_radius() * lerpf(0.88, 1.0, ring_alpha)
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(1.0, 1.0, 1.0, 0.35 * ring_alpha), 2.0)
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(1.0, 0.9, 0.3, 0.12 * ring_alpha), radius * 2.0)
 
 
 func _draw_fail_death_overlay() -> void:

@@ -5,8 +5,13 @@ var monsters: Array = []
 var spawn_clusters: Array = []
 var boss: CentipedeBoss = null
 
+var _spawn_queue: Array = []
+var _spawn_timer := 0.0
+var _pending_boss_stage := -1
+
 
 func reset() -> void:
+	_clear_spawn_schedule()
 	for m in monsters:
 		if is_instance_valid(m):
 			m.queue_free()
@@ -19,12 +24,59 @@ func reset() -> void:
 
 func spawn_stage(stage_index: int, battle: Node) -> void:
 	reset()
+	_spawn_stage_content(stage_index, battle)
+
+
+func append_stage(stage_index: int, battle: Node) -> void:
+	_purge_inactive_monsters()
+	_spawn_stage_content(stage_index, battle)
+
+
+func is_spawning() -> bool:
+	return _pending_boss_stage >= 0 or not _spawn_queue.is_empty() or _spawn_timer > 0.0
+
+
+func update_spawns(delta: float, battle: Node) -> void:
+	if delta <= 0.0:
+		return
+	if _spawn_timer > 0.0:
+		_spawn_timer = maxf(0.0, _spawn_timer - delta)
+	if _pending_boss_stage >= 0:
+		if _spawn_timer > 0.0:
+			return
+		_spawn_centipede_boss(battle, _pending_boss_stage)
+		_pending_boss_stage = -1
+		return
+	if _spawn_queue.is_empty() or _spawn_timer > 0.0:
+		return
+	var entry: Dictionary = _spawn_queue.pop_front()
+	_spawn_monster(str(entry.get("kind_id", "NORMAL")), int(entry.get("stage_index", 0)), battle)
+	if not _spawn_queue.is_empty():
+		_spawn_timer = _spawn_interval()
+
+
+func _purge_inactive_monsters() -> void:
+	var i := monsters.size() - 1
+	while i >= 0:
+		var m = monsters[i]
+		if not is_instance_valid(m) or m.get("dying") == true or m.get("alive") == false:
+			if is_instance_valid(m):
+				m.queue_free()
+			monsters.remove_at(i)
+		i -= 1
+	if is_instance_valid(boss) and boss.is_defeated():
+		boss.queue_free()
+		boss = null
+
+
+func _spawn_stage_content(stage_index: int, battle: Node) -> void:
 	var stage := GameConfig.get_stage(stage_index)
 	if stage.is_empty():
 		return
+	_spawn_timer = maxf(_spawn_timer, _spawn_wave_delay())
 	var boss_id := str(stage.get("boss_id", ""))
 	if boss_id == "centipede":
-		_spawn_centipede_boss(battle, stage_index)
+		_pending_boss_stage = stage_index
 		return
 	var counts := {
 		"NORMAL": _scaled_count(int(stage.get("normal", 0)), stage_index, false),
@@ -38,7 +90,8 @@ func spawn_stage(stage_index: int, battle: Node) -> void:
 	_init_clusters(battle)
 	for kind_id in counts.keys():
 		for i in range(counts[kind_id]):
-			_spawn_monster(kind_id, stage_index, battle)
+			_spawn_queue.append({"kind_id": kind_id, "stage_index": stage_index})
+	_spawn_queue.shuffle()
 
 
 func get_active_monsters() -> Array:
@@ -70,9 +123,31 @@ func _is_combat_targetable(m: Node) -> bool:
 
 
 func all_dead() -> bool:
+	if is_spawning():
+		return false
 	if boss and is_instance_valid(boss):
 		return boss.is_defeated()
-	return get_active_monsters().is_empty()
+	for m in monsters:
+		if not is_instance_valid(m):
+			continue
+		if m.get("alive") == false or m.get("dying") == true:
+			continue
+		return false
+	return true
+
+
+func _clear_spawn_schedule() -> void:
+	_spawn_queue.clear()
+	_spawn_timer = 0.0
+	_pending_boss_stage = -1
+
+
+func _spawn_interval() -> float:
+	return float(GameConfig.get_tuning("monster_spawn_interval", 0.05))
+
+
+func _spawn_wave_delay() -> float:
+	return float(GameConfig.get_tuning("monster_spawn_wave_delay", 0.55))
 
 
 func _scaled_count(raw: int, stage_index: int, is_shield: bool) -> int:
@@ -132,6 +207,13 @@ func _pick_spawn_pos(battle: Node) -> Vector2:
 			if MathUtils.dist(pos, m.global_position) < 20.0:
 				ok = false
 				break
+		for m in monsters:
+			if not is_instance_valid(m):
+				continue
+			if m.has_method("is_spawn_locked") and m.is_spawn_locked():
+				if MathUtils.dist(pos, m.global_position) < 20.0:
+					ok = false
+					break
 		if ok:
 			return pos
 	return Vector2(w * 0.72, h * 0.45)

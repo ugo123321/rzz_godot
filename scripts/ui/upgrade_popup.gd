@@ -1,16 +1,15 @@
 extends Control
 class_name UpgradePopup
 
-const EffectHelperScript := preload("res://scripts/utils/effect_helper.gd")
-
-const PREVIEW_VIEWPORT_SIZE := Vector2i(72, 72)
+const ICON_SIZE := 48
+const PixelUi := preload("res://scripts/utils/pixel_ui_helper.gd")
 
 signal upgrade_picked(index: int)
 
-@onready var panel: PanelContainer = $Panel
-@onready var title_label: Label = $Panel/VBox/TitleLabel
-@onready var rarity_label: Label = $Panel/VBox/RarityLabel
-@onready var cards: HBoxContainer = $Panel/VBox/Cards
+@onready var panel: Control = $Panel
+@onready var title_label: Label = $Panel/CenterContainer/VBox/TitleLabel
+@onready var rarity_label: Label = $Panel/CenterContainer/VBox/RarityLabel
+@onready var cards: HBoxContainer = $Panel/CenterContainer/VBox/Cards
 
 var battle: Node
 var upgrade_manager: UpgradeManager
@@ -27,6 +26,15 @@ func setup(battle_node: Node, manager: UpgradeManager) -> void:
 	_apply_panel_layout()
 	cards.alignment = BoxContainer.ALIGNMENT_CENTER
 	cards.add_theme_constant_override("separation", 10)
+	_apply_label_font(title_label, 18)
+	_apply_label_font(rarity_label, 14)
+
+
+func _apply_label_font(label: Control, font_size: int) -> void:
+	if label == null:
+		return
+	PixelUi.apply_ui_font(label)
+	label.add_theme_font_size_override("font_size", font_size)
 
 
 func _apply_panel_layout() -> void:
@@ -120,36 +128,41 @@ func _calc_card_metrics(choice_count: int) -> Dictionary:
 	}
 
 
-func _create_preview_widget(preview_frames: SpriteFrames) -> Control:
+func _create_icon_widget(upgrade: Dictionary) -> Control:
 	var box := CenterContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	if preview_frames == null:
+	var icon_path := str(upgrade.get("icon_file", ""))
+	if icon_path.is_empty():
+		var fallback := Label.new()
+		fallback.text = str(upgrade.get("icon", "?"))
+		fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		fallback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_apply_label_font(fallback, 26)
+		fallback.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(fallback)
 		return box
 
-	var scale: float = EffectHelperScript.preview_scale(preview_frames)
-	var viewport := SubViewport.new()
-	viewport.size = PREVIEW_VIEWPORT_SIZE
-	viewport.transparent_bg = true
-	viewport.handle_input_locally = false
+	var texture := load(icon_path) as Texture2D
+	if texture == null:
+		var missing := Label.new()
+		missing.text = str(upgrade.get("icon", "?"))
+		missing.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		missing.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_apply_label_font(missing, 26)
+		missing.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(missing)
+		return box
 
-	var holder := SubViewportContainer.new()
-	holder.custom_minimum_size = Vector2(PREVIEW_VIEWPORT_SIZE)
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(viewport)
-
-	var anim := AnimatedSprite2D.new()
-	anim.sprite_frames = preview_frames
-	anim.animation = EffectHelperScript.ANIM_PREVIEW
-	anim.centered = true
-	anim.position = Vector2(PREVIEW_VIEWPORT_SIZE) * 0.5
-	anim.scale = Vector2.ONE * scale
-	anim.play()
-	SpriteHelper.apply_pixel_art(anim)
-	viewport.add_child(anim)
-
-	box.add_child(holder)
+	var icon := TextureRect.new()
+	icon.texture = texture
+	icon.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(icon)
 	return box
 
 
@@ -176,6 +189,7 @@ func _rebuild_cards() -> void:
 		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn.size_flags_stretch_ratio = 1.0
 		btn.text = ""
+		_apply_label_font(btn, name_font)
 
 		var vbox := VBoxContainer.new()
 		vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -183,18 +197,9 @@ func _rebuild_cards() -> void:
 		vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		btn.add_child(vbox)
 
-		var preview_frames: SpriteFrames = EffectHelperScript.build_upgrade_preview_frames(upgrade)
-		var preview_box := _create_preview_widget(preview_frames)
-		preview_box.custom_minimum_size = Vector2(0, preview_h)
-		if preview_frames == null:
-			var icon := Label.new()
-			icon.text = str(upgrade.get("icon", "?"))
-			icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			icon.add_theme_font_size_override("font_size", 26)
-			icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			preview_box.add_child(icon)
-		vbox.add_child(preview_box)
+		var icon_box := _create_icon_widget(upgrade)
+		icon_box.custom_minimum_size = Vector2(0, preview_h)
+		vbox.add_child(icon_box)
 
 		var stack := 0
 		if battle and battle.player:
@@ -204,7 +209,7 @@ func _rebuild_cards() -> void:
 		name_label.text = str(upgrade.get("name_cn", ""))
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		name_label.add_theme_font_size_override("font_size", name_font)
+		_apply_label_font(name_label, name_font)
 		name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vbox.add_child(name_label)
 
@@ -214,13 +219,13 @@ func _rebuild_cards() -> void:
 			desc_label.text += "\nLv.%d" % (stack + 1)
 		desc_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		desc_label.add_theme_font_size_override("font_size", desc_font)
+		_apply_label_font(desc_label, desc_font)
 		desc_label.modulate = Color(0.82, 0.82, 0.82)
 		desc_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vbox.add_child(desc_label)
 
 		var rarity_color := Color(
-			str(GameConfig.get_upgrade_fx(str(upgrade.get("rarity", "white"))).get("color_hex", "#ffffff"))
+			str(GameConfig.get_upgrade_fx(str(upgrade.get("rarity", "blue"))).get("color_hex", "#ffffff"))
 		)
 		name_label.modulate = rarity_color
 		var style := StyleBoxFlat.new()

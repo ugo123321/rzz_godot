@@ -15,6 +15,7 @@ var hitbox_radius := 13.0
 var can_move := true
 var ranged := false
 var attack_range := 0.0
+var arrow_speed := 85.0
 var ki_drain_on_hit := 0
 var has_shield := false
 var facing := 1.0
@@ -26,16 +27,19 @@ var spawned_children := false
 var stage_index_cached := 0
 var frozen_timer := 0.0
 var vulnerable_mark := false
-var path_target_highlight := false
+var path_target_hit_count := 0
 var fail_throw_timer := 0.0
 var dying := false
 var death_delay := 0.0
 var death_timer := 0.0
-var death_fade_dur := 0.1
+var death_fade_dur := 0.28
+var death_flash := 0.0
+var _death_base_scale := Vector2.ONE
 var hurt_reaction_timer := 0.0
 
 var _sprite_folder := "Skeleton"
 var _sprite_prefix := "Skeleton"
+var spawn_lock_timer := 0.0
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 
@@ -55,6 +59,7 @@ func setup(monster_kind: String, stage_index: int, spawn_pos: Vector2) -> void:
 	can_move = int(stats.get("can_move", 1)) != 0
 	ranged = int(stats.get("ranged", 0)) != 0
 	attack_range = float(stats.get("attack_range", 0))
+	arrow_speed = float(stats.get("arrow_speed", 85.0))
 	ki_drain_on_hit = int(stats.get("ki_drain_on_hit", 0))
 	has_shield = kind_id == "SHIELD"
 	max_split_tier = int(stats.get("max_split_tier", 0))
@@ -68,13 +73,21 @@ func setup(monster_kind: String, stage_index: int, spawn_pos: Vector2) -> void:
 
 func begin_spawn(duration: float = -1.0, target_scale: Vector2 = Vector2.ONE) -> void:
 	if duration < 0.0:
-		duration = float(GameConfig.get_tuning("monster_spawn_anim", 0.42))
+		duration = float(GameConfig.get_tuning("monster_spawn_anim", 0.6))
+	spawn_lock_timer = duration
+	attack_timer = attack_interval
 	modulate.a = 0.0
 	scale = target_scale * 0.35
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(self, "modulate:a", 1.0, duration)
 	tween.tween_property(self, "scale", target_scale, duration).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(_on_spawn_anim_finished, CONNECT_ONE_SHOT)
+
+
+func _on_spawn_anim_finished() -> void:
+	spawn_lock_timer = 0.0
+	attack_timer = attack_interval
 
 
 func _apply_sprite() -> void:
@@ -126,20 +139,33 @@ func get_head_top_global_position() -> Vector2:
 
 
 func is_combat_targetable() -> bool:
-	return alive and not dying
+	return alive and not dying and spawn_lock_timer <= 0.0
+
+
+func is_spawn_locked() -> bool:
+	return spawn_lock_timer > 0.0
 
 
 func update_death(delta: float) -> void:
 	if not dying:
 		return
+	death_flash = maxf(0.0, death_flash - delta * 6.0)
 	if death_delay > 0.0:
 		death_delay -= delta
-		modulate.a = 1.0
+		_apply_death_modulate(1.0)
 		return
 	death_timer -= delta
-	modulate.a = clampf(death_timer / maxf(0.001, death_fade_dur), 0.0, 1.0)
+	var alpha := clampf(death_timer / maxf(0.001, death_fade_dur), 0.0, 1.0)
+	_apply_death_modulate(alpha)
+	var shrink := lerpf(1.0, 0.72, 1.0 - alpha)
+	scale = _death_base_scale * shrink
 	if death_timer <= 0.0:
 		_finish_death()
+
+
+func _apply_death_modulate(alpha: float) -> void:
+	var flash := 1.0 + death_flash * 0.25
+	modulate = Color(flash, flash, flash, alpha)
 
 
 func is_frozen() -> bool:
@@ -156,16 +182,10 @@ func take_damage(raw_damage: int, from_pos: Vector2) -> Dictionary:
 	if has_shield:
 		has_shield = false
 		return {"damage": 0, "is_crit": false, "blocked_by_shield": true}
-	facing = 1.0 if from_pos.x < global_position.x else -1.0
-	var anim_sprite := _get_sprite()
-	if anim_sprite:
-		anim_sprite.flip_h = facing < 0
 	var mult := 2.0 if vulnerable_mark else 1.0
 	vulnerable_mark = false
 	var actual := maxi(1, int(round((float(raw_damage) - defense) * mult)))
 	hp -= actual
-	_play_hurt_anim()
-	queue_redraw()
 	var started_dying := false
 	if hp <= 0:
 		hp = 0
@@ -174,6 +194,13 @@ func take_damage(raw_damage: int, from_pos: Vector2) -> Dictionary:
 		if battle and battle.combat:
 			delay = battle.combat.schedule_death_fade()
 		started_dying = begin_dying(delay)
+	else:
+		facing = 1.0 if from_pos.x >= global_position.x else -1.0
+		var anim_sprite := _get_sprite()
+		if anim_sprite:
+			anim_sprite.flip_h = facing < 0
+		_play_hurt_anim()
+	queue_redraw()
 	return {"damage": actual, "is_crit": false, "started_dying": started_dying}
 
 
@@ -185,11 +212,18 @@ func begin_dying(stagger_delay: float) -> bool:
 	if dying or not alive:
 		return false
 	dying = true
-	death_delay = maxf(0.0, stagger_delay)
+	death_fade_dur = float(GameConfig.get_tuning("monster_death_fade", 0.28))
+	var death_anim_dur := _death_anim_duration()
+	death_delay = maxf(0.0, stagger_delay) + death_anim_dur
 	death_timer = death_fade_dur
-	modulate.a = 1.0
+	death_flash = 0.35
+	_death_base_scale = scale
+	modulate = Color.WHITE
+	var pop_tween := create_tween()
+	pop_tween.tween_property(self, "scale", _death_base_scale * 1.08, 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	pop_tween.tween_property(self, "scale", _death_base_scale, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	queue_redraw()
-	_play_anim(SpriteHelper.ANIM_DEATH)
+	_play_anim(SpriteHelper.ANIM_DEATH, true)
 	if can_split() and not spawned_children:
 		var battle := get_tree().get_first_node_in_group("battle")
 		if battle and battle.spawner:
@@ -213,6 +247,9 @@ func _finish_death() -> void:
 
 func update_ai(delta: float, player: BattlePlayer, battle: Node) -> void:
 	if not alive or dying or player == null:
+		return
+	if spawn_lock_timer > 0.0:
+		spawn_lock_timer = maxf(0.0, spawn_lock_timer - delta)
 		return
 	if frozen_timer > 0.0:
 		frozen_timer -= delta
@@ -259,7 +296,7 @@ func _perform_attack(player: BattlePlayer, battle: Node) -> void:
 			battle.particles.emit_particle(hand.x, hand.y - 4.0, 0, -20, 0.35, 4.0, Color("#ff5040"), 0, false, false)
 		return
 	if ranged:
-		battle.spawn_arrow(global_position, player.global_position, attack, kind_id)
+		battle.spawn_arrow(global_position, player.global_position, attack, arrow_speed)
 	else:
 		_play_anim(SpriteHelper.ANIM_ATTACK)
 		player.take_damage(attack)
@@ -271,22 +308,30 @@ func _get_sprite() -> AnimatedSprite2D:
 	return sprite if sprite != null else get_node_or_null("AnimatedSprite2D") as AnimatedSprite2D
 
 
-func _hurt_anim_duration() -> float:
+func _anim_duration(anim_name: String, fallback: float) -> float:
 	var anim_sprite := _get_sprite()
 	if anim_sprite == null or anim_sprite.sprite_frames == null:
-		return 0.35
-	if not anim_sprite.sprite_frames.has_animation(SpriteHelper.ANIM_HURT):
-		return 0.35
-	var frame_count := anim_sprite.sprite_frames.get_frame_count(SpriteHelper.ANIM_HURT)
+		return fallback
+	if not anim_sprite.sprite_frames.has_animation(anim_name):
+		return fallback
+	var frame_count := anim_sprite.sprite_frames.get_frame_count(anim_name)
 	if frame_count <= 0:
-		return 0.35
-	var speed := anim_sprite.sprite_frames.get_animation_speed(SpriteHelper.ANIM_HURT)
+		return fallback
+	var speed := anim_sprite.sprite_frames.get_animation_speed(anim_name)
 	if speed <= 0.0:
-		return 0.35
+		return fallback
 	var total := 0.0
 	for i in range(frame_count):
-		total += anim_sprite.sprite_frames.get_frame_duration(SpriteHelper.ANIM_HURT, i)
+		total += anim_sprite.sprite_frames.get_frame_duration(anim_name, i)
 	return maxf(0.12, total / speed)
+
+
+func _hurt_anim_duration() -> float:
+	return _anim_duration(SpriteHelper.ANIM_HURT, 0.35)
+
+
+func _death_anim_duration() -> float:
+	return _anim_duration(SpriteHelper.ANIM_DEATH, 0.5)
 
 
 func _play_hurt_anim() -> void:
@@ -314,6 +359,8 @@ func _play_anim(anim_name: String, force: bool = false) -> void:
 	if force and anim_sprite.animation == anim_name:
 		anim_sprite.stop()
 		anim_sprite.frame = 0
+	if anim_name == SpriteHelper.ANIM_DEATH:
+		force = true
 	anim_sprite.play(anim_name)
 
 
@@ -333,8 +380,11 @@ func _draw() -> void:
 			StageFailAnimator.draw_monster_throw_spear(self, self, battle.player.global_position)
 	if _should_show_hp_bar():
 		_draw_hp_bar()
-	if not alive or dying or not path_target_highlight:
+	if not alive or dying or path_target_hit_count <= 0:
 		return
+	var ring := CombatDirector.path_preview_ring_color(path_target_hit_count)
+	var fill := ring
+	fill.a = 0.12 + mini(path_target_hit_count, 4) * 0.04
 	var r := hitbox_radius + 5.0
-	draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, Color(1.0, 0.92, 0.2, 0.9), 3.0)
-	draw_circle(Vector2.ZERO, r * 0.55, Color(1.0, 0.95, 0.35, 0.12))
+	draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, ring, 3.0)
+	draw_circle(Vector2.ZERO, r * 0.55, fill)

@@ -2,7 +2,7 @@
   "centipede": {
     "name": "千足虫",
     "warning_time": 3,
-    "segment_hp": 320,
+    "segment_hp": 1280,
     "hp_scale": 3.5,
     "segment_def": 3,
     "segment_radius": 23,
@@ -11,6 +11,6 @@
     "bullets_per_shot": 20,
     "bullet_damage": 24,
     "bullet_speed": 130,
-    "defeat_exp": 140
+    "defeat_exp": 560
   }
 }

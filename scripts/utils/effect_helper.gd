@@ -53,6 +53,11 @@ const EFFECT_ATLAS := {
 		"fps": 20.0,
 		"max_frames": 17,
 	},
+	"hit_a": {
+		"fallback": "res://assets/effects/12.Warped VFX Pack 1/Warped Fx Pack 1 Files/Sprites/Hit-a",
+		"fps": 18.0,
+		"max_frames": 6,
+	},
 	"tornado": {
 		"json": "res://assets/effects/13.Gothicvania Magic Pack 8/Magic Pack 8 files/aseprite/water.json",
 		"sheet": "res://assets/effects/13.Gothicvania Magic Pack 8/Magic Pack 8 files/spritesheets/water.png",
@@ -77,6 +82,13 @@ const EFFECT_ATLAS := {
 		"sheet": "res://assets/effects/2.Gothicvania Magic Pack N2 - Fire/Magic Pack Fire files/spritesheets/fire.png",
 		"fallback": "res://assets/effects/2.Gothicvania Magic Pack N2 - Fire/Magic Pack Fire files/sprites/fire",
 		"fps": 14.0,
+	},
+	"air_slash": {
+		"json": "res://assets/effects/18.Gothicvania Magic Pack 12/Magic Pack 12 Files/aseprite/air-slash.json",
+		"sheet": "res://assets/effects/18.Gothicvania Magic Pack 12/Magic Pack 12 Files/Spritesheets/Air-Slash.png",
+		"fallback": "res://assets/effects/18.Gothicvania Magic Pack 12/Magic Pack 12 Files/Sprites/AirSlash",
+		"fps": 14.0,
+		"max_frames": 5,
 	},
 }
 
@@ -128,12 +140,12 @@ static func build_effect_frames(effect_key: String) -> SpriteFrames:
 
 	if frames == null and cfg.has("fallback"):
 		var fallback := str(cfg.fallback)
-		if DirAccess.dir_exists_absolute(fallback):
+		if _dir_has_pngs(fallback):
 			frames = _load_sequence_frames(fallback, max_frames)
 
 	if frames == null and PREVIEW_PATHS.has(effect_key):
 		var mapped := "res://assets/%s" % PREVIEW_PATHS[effect_key]
-		if DirAccess.dir_exists_absolute(mapped):
+		if _dir_has_pngs(mapped):
 			frames = _load_sequence_frames(mapped, max_frames)
 
 	if frames == null:
@@ -288,12 +300,12 @@ static func _build_effect_preview(effect_name: String, effect_pack: String) -> S
 static func _resolve_preview_dir(effect_name: String, effect_pack: String) -> String:
 	if PREVIEW_PATHS.has(effect_name):
 		var mapped := "res://assets/%s" % PREVIEW_PATHS[effect_name]
-		if DirAccess.dir_exists_absolute(mapped):
+		if _dir_has_pngs(mapped):
 			return mapped
 
 	if not effect_pack.is_empty():
 		var pack_base := "res://assets/%s" % effect_pack
-		if DirAccess.dir_exists_absolute(pack_base):
+		if _dir_has_pngs(pack_base):
 			var aliases: Array = SEARCH_ALIASES.get(effect_name, [effect_name])
 			var found := _search_sequence_dir(pack_base, aliases)
 			if not found.is_empty():
@@ -301,18 +313,43 @@ static func _resolve_preview_dir(effect_name: String, effect_pack: String) -> St
 	return ""
 
 
-static func _load_texture_from_path(res_path: String) -> Texture2D:
-	if ResourceLoader.exists(res_path):
-		var cached: Texture2D = load(res_path)
-		if cached != null:
-			return cached
+static func _res_exists(res_path: String) -> bool:
+	return ResourceLoader.exists(res_path) or FileAccess.file_exists(res_path)
+
+
+static func _read_text_from_res(res_path: String) -> String:
+	if FileAccess.file_exists(res_path):
+		return FileAccess.get_file_as_string(res_path)
+	return ""
+
+
+static func _load_image_from_res(res_path: String) -> Image:
 	if not res_path.begins_with("res://"):
+		return null
+	if ResourceLoader.exists(res_path):
+		var res: Resource = load(res_path)
+		if res is Texture2D:
+			var image := (res as Texture2D).get_image()
+			if image != null and not image.is_empty():
+				return image
+	if FileAccess.file_exists(res_path):
+		var image := Image.new()
+		if image.load(res_path) == OK:
+			return image
+	if OS.has_feature("web"):
 		return null
 	var fs_path := ProjectSettings.globalize_path(res_path)
 	if fs_path.is_empty() or not FileAccess.file_exists(fs_path):
 		return null
-	var image := Image.new()
-	if image.load(fs_path) != OK:
+	var fs_image := Image.new()
+	if fs_image.load(fs_path) != OK:
+		return null
+	return fs_image
+
+
+static func _load_texture_from_path(res_path: String) -> Texture2D:
+	var image := _load_image_from_res(res_path)
+	if image == null:
 		return null
 	return ImageTexture.create_from_image(image)
 
@@ -333,11 +370,8 @@ static func _load_effect_texture_res(res_path: String) -> Texture2D:
 		return null
 	if _effect_sheet_cache.has(res_path):
 		return _effect_sheet_cache[res_path]
-	var fs_path := ProjectSettings.globalize_path(res_path)
-	if fs_path.is_empty() or not FileAccess.file_exists(fs_path):
-		return null
-	var image := Image.new()
-	if image.load(fs_path) != OK:
+	var image := _load_image_from_res(res_path)
+	if image == null:
 		return null
 	_key_effect_black_to_alpha(image)
 	var texture := ImageTexture.create_from_image(image)
@@ -441,9 +475,9 @@ static func _slice_sprite_frames_tail(source: SpriteFrames, anim_name: String, t
 
 
 static func _load_aseprite_json_frames(json_path: String, sheet_path: String, max_frames: int = DEFAULT_MAX_FRAMES) -> SpriteFrames:
-	if not FileAccess.file_exists(json_path):
+	if not _res_exists(json_path):
 		return null
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(json_path))
+	var parsed: Variant = JSON.parse_string(_read_text_from_res(json_path))
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return null
 	var frame_list: Array = parsed.get("frames", [])
@@ -523,9 +557,9 @@ static func _character_tag_to_anim(tag_name: String) -> String:
 
 
 static func _load_character_atlas_frames(json_path: String, sheet_path: String) -> SpriteFrames:
-	if not FileAccess.file_exists(json_path):
+	if not _res_exists(json_path):
 		return null
-	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(json_path))
+	var parsed: Variant = JSON.parse_string(_read_text_from_res(json_path))
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return null
 	var frame_list: Array = parsed.get("frames", [])
@@ -589,7 +623,7 @@ static func _load_character_strip_frames(folder: String, prefix: String) -> Spri
 		SpriteHelper.ANIM_ATTACK01: ["%s-Attack01.png" % prefix],
 		SpriteHelper.ANIM_ATTACK: ["%s-Attack02.png" % prefix, "%s-Attack3.png" % prefix],
 		SpriteHelper.ANIM_HURT: ["%s-Hurt.png" % prefix],
-		SpriteHelper.ANIM_DEATH: ["%s-Death.png" % prefix],
+		SpriteHelper.ANIM_DEATH: ["%s-Death.png" % prefix, "%s-DEATH.png" % prefix],
 	}
 	for anim_name in mapping.keys():
 		frames.add_animation(anim_name)
@@ -611,6 +645,13 @@ static func _load_character_strip_frames(folder: String, prefix: String) -> Spri
 
 
 static func _collect_png_files(dir_path: String) -> Array:
+	var result := _collect_png_files_diraccess(dir_path)
+	if not result.is_empty():
+		return result
+	return _collect_png_files_by_name_probe(dir_path)
+
+
+static func _collect_png_files_diraccess(dir_path: String) -> Array:
 	var result: Array = []
 	var dir := DirAccess.open(dir_path)
 	if dir == null:
@@ -630,13 +671,48 @@ static func _collect_png_files(dir_path: String) -> Array:
 		entry = dir.get_next()
 		while entry != "":
 			if entry != "." and entry != ".." and dir.current_is_dir():
-				var nested := _collect_png_files(dir_path.path_join(entry))
+				var nested := _collect_png_files_diraccess(dir_path.path_join(entry))
 				if not nested.is_empty():
 					dir.list_dir_end()
 					return nested
 			entry = dir.get_next()
 		dir.list_dir_end()
 	return result
+
+
+static func _guess_name_prefixes(dir_path: String) -> Array:
+	var prefixes: Array = []
+	var seen: Dictionary = {}
+	for raw_name in [dir_path.get_file(), dir_path.get_base_dir().get_file()]:
+		for variant in [raw_name, raw_name.to_lower()]:
+			if variant.is_empty() or seen.has(variant):
+				continue
+			seen[variant] = true
+			if variant.to_lower() == "sprites":
+				continue
+			prefixes.append(variant)
+	return prefixes
+
+
+static func _collect_png_files_by_name_probe(dir_path: String) -> Array:
+	for prefix in _guess_name_prefixes(dir_path):
+		var files: Array = []
+		for i in range(1, DEFAULT_MAX_FRAMES + 1):
+			var found := false
+			for fmt in ["%s%d.png", "%s%02d.png", "%s%03d.png"]:
+				var path := dir_path.path_join(fmt % [prefix, i])
+				if _res_exists(path):
+					files.append(path)
+					found = true
+			if not found and not files.is_empty():
+				break
+		if not files.is_empty():
+			return _natural_sort(files)
+	return []
+
+
+static func _dir_has_pngs(dir_path: String) -> bool:
+	return not _collect_png_files(dir_path).is_empty()
 
 
 static func _count_png_files(dir_path: String) -> int:

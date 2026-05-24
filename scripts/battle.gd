@@ -9,6 +9,9 @@ const LevelOverlayScript = preload("res://scripts/ui/level_overlay.gd")
 const CombatAfterimagesScript = preload("res://scripts/ui/combat_afterimages.gd")
 const SakuraSystemScript = preload("res://scripts/systems/sakura_system.gd")
 const GrassSystemScript = preload("res://scripts/systems/grass_system.gd")
+const EnemyArrowScript = preload("res://scripts/entities/enemy_arrow.gd")
+
+const PixelUi := preload("res://scripts/utils/pixel_ui_helper.gd")
 
 @export var stage_index := 0
 
@@ -104,6 +107,9 @@ func _ready() -> void:
 	blood_stains.name = "BloodStains"
 	blood_stains.z_index = -4
 	add_child(blood_stains)
+	var blood_world_w := float(GameConfig.get_tuning("logical_width", 390))
+	var blood_world_h := float(GameConfig.get_tuning("logical_height", 700))
+	blood_stains.configure(blood_world_w, blood_world_h)
 	ground_effects = GroundEffectManagerScript.new()
 	ground_effects.name = "GroundEffects"
 	ground_effects.z_index = -3
@@ -136,6 +142,7 @@ func _ready() -> void:
 	_refresh_stage_ambience()
 	upgrade_popup.setup(self, upgrades)
 	upgrade_popup.upgrade_picked.connect(_on_upgrade_picked)
+	PixelUi.apply_ui_font_tree($UI)
 	combat.resolve_finished.connect(_on_resolve_finished)
 	EventBus.monster_killed.connect(_on_monster_killed)
 	_setup_viewport()
@@ -168,12 +175,14 @@ func start_game() -> void:
 		sakura_field.stop_field()
 	if blood_stains:
 		blood_stains.clear()
+	_clear_projectiles()
 	state = GameState.MENU
 	hud.show_message("点击屏幕开始", 999.0)
 	intro_label.text = "忍者斩"
 
 
-func _start_stage() -> void:
+func _start_run() -> void:
+	pending_stage_clear = false
 	if fail_animator:
 		fail_animator.reset()
 	player.begin_stage()
@@ -185,21 +194,25 @@ func _start_stage() -> void:
 		particles.clear()
 	if blood_stains:
 		blood_stains.clear()
+	_clear_projectiles()
 	if ground_effects:
 		ground_effects.reset()
+	if level_overlay:
+		level_overlay.reset_all()
+	if sakura_field:
+		sakura_field.stop_field()
 	spawner.spawn_stage(stage_index, self)
 	if terrain:
 		terrain.setup_for_stage(stage_index, _get_safe_zone())
 	_sync_background_layer()
 	_refresh_stage_ambience()
-	var stage := GameConfig.get_stage(stage_index)
-	var boss_id := str(stage.get("boss_id", ""))
-	if boss_id.is_empty() and buff_orbs:
-		buff_orbs.spawn_for_stage(stage_index, player.home_position)
-	elif buff_orbs:
-		buff_orbs.reset()
-	hud.set_stage_text(str(stage.get("display_name", "第%d关" % (stage_index + 1))))
-	_begin_stage_intro()
+	_apply_stage_meta(true)
+	state = GameState.PLAYING
+	intro_label.visible = false
+	hud.hide_message()
+	if experience:
+		EventBus.exp_changed.emit(experience.level, experience.exp, experience.exp_to_next)
+	EventBus.stage_started.emit(stage_index)
 
 
 func apply_debug_settings(target_level: int, target_stage: int) -> void:
@@ -215,6 +228,7 @@ func apply_debug_settings(target_level: int, target_stage: int) -> void:
 		particles.clear()
 	if blood_stains:
 		blood_stains.clear()
+	_clear_projectiles()
 	if ground_effects:
 		ground_effects.reset()
 	if level_overlay:
@@ -224,17 +238,22 @@ func apply_debug_settings(target_level: int, target_stage: int) -> void:
 		terrain.setup_for_stage(stage_index, _get_safe_zone())
 	_sync_background_layer()
 	_refresh_stage_ambience()
-	var stage := GameConfig.get_stage(stage_index)
-	var boss_id := str(stage.get("boss_id", ""))
-	if boss_id.is_empty() and buff_orbs:
-		buff_orbs.spawn_for_stage(stage_index, player.home_position)
-	elif buff_orbs:
-		buff_orbs.reset()
-	hud.set_stage_text(str(stage.get("display_name", "第%d关" % (stage_index + 1))))
+	_apply_stage_meta(true)
 	state = GameState.PLAYING
 	intro_label.visible = false
 	hud.hide_message()
 	hud.show_message("调试跳关已应用", 1.5)
+
+
+func _apply_stage_meta(spawn_buff_orbs: bool) -> void:
+	var stage := GameConfig.get_stage(stage_index)
+	if spawn_buff_orbs:
+		var boss_id := str(stage.get("boss_id", ""))
+		if boss_id.is_empty() and buff_orbs:
+			buff_orbs.spawn_for_stage(stage_index, player.home_position)
+		elif buff_orbs:
+			buff_orbs.reset()
+	hud.set_stage_text(str(stage.get("display_name", "第%d关" % (stage_index + 1))))
 
 
 func shake_camera(magnitude: float, duration: float) -> void:
@@ -294,37 +313,6 @@ func _update_camera_shake(delta: float) -> void:
 		shake_mag = 0.0
 
 
-func _begin_stage_intro() -> void:
-	state = GameState.STAGE_INTRO
-	intro_label.visible = false
-	if sakura_field:
-		var slide_in := float(GameConfig.get_tuning("stage_intro_slide_in", 0.38))
-		var hold := float(GameConfig.get_tuning("stage_intro_hold", 0.85))
-		var slide_out := float(GameConfig.get_tuning("stage_intro_slide_out", 0.38))
-		var sakura_extra := float(GameConfig.get_tuning("stage_intro_sakura_extra", 0.8))
-		var intro_dur := slide_in + hold + slide_out
-		var w := float(GameConfig.get_tuning("logical_width", 390))
-		var h := float(GameConfig.get_tuning("logical_height", 700))
-		sakura_field.start_field(w, h, intro_dur + sakura_extra)
-	var stage := GameConfig.get_stage(stage_index)
-	var boss_id := str(stage.get("boss_id", ""))
-	var boss_name := ""
-	if boss_id == "centipede":
-		boss_name = "Boss: 千足虫"
-	if level_overlay:
-		level_overlay.start_stage_intro(stage_index + 1, boss_name, _finish_stage_intro)
-
-
-func _finish_stage_intro() -> void:
-	state = GameState.PLAYING
-	intro_label.visible = false
-	if level_overlay:
-		level_overlay.clear_stage_intro()
-	hud.hide_message()
-	if experience:
-		EventBus.exp_changed.emit(experience.level, experience.exp, experience.exp_to_next)
-
-
 func enter_bullet_time() -> void:
 	time_scale = float(GameConfig.get_tuning("bullet_time_scale", 0.14))
 	dim_overlay.visible = true
@@ -332,15 +320,19 @@ func enter_bullet_time() -> void:
 
 
 func exit_bullet_time(cancelled: bool) -> void:
-	time_scale = 1.0
-	dim_overlay.visible = false
 	if cancelled:
+		resume_battle_time()
 		if buff_orbs:
 			buff_orbs.cancel_draw_session()
 		if player.state == BattlePlayer.State.BULLET_TIME:
 			player.invalidate_path()
 		return
 	player.start_attack()
+
+
+func resume_battle_time() -> void:
+	time_scale = 1.0
+	dim_overlay.visible = false
 
 
 func resume_from_pause() -> void:
@@ -375,8 +367,9 @@ func enter_level_up() -> void:
 
 func _on_monster_killed(monster: Node) -> void:
 	if blood_stains and is_instance_valid(monster) and monster is BattleMonster:
-		var hit_r: float = monster.get_hitbox_radius()
-		var intensity := 1.35 if hit_r > 13.0 else 1.0
+		var bm := monster as BattleMonster
+		var hit_r: float = bm.get_hitbox_radius()
+		var intensity := 1.65 if hit_r > 13.0 else 1.25
 		var hit_angle := randf() * TAU
 		if player:
 			hit_angle = (monster.global_position - player.global_position).angle()
@@ -405,6 +398,8 @@ func _on_resolve_finished() -> void:
 
 
 func _needs_fx_redraw() -> bool:
+	if combat and combat.has_active_hit_fx():
+		return true
 	if abilities and abilities.has_active_fx():
 		return true
 	if summons and summons.has_active_fx():
@@ -413,8 +408,6 @@ func _needs_fx_redraw() -> bool:
 		for p in particles.pool:
 			if p.active:
 				return true
-	if blood_stains and not blood_stains.stains.is_empty():
-		return true
 	if fail_animator and fail_animator.is_active():
 		return true
 	return false
@@ -438,20 +431,11 @@ func _try_finish_stage_clear() -> void:
 	if summons and summons.has_active_fx():
 		return
 	pending_stage_clear = false
-	_begin_stage_clear()
+	_advance_to_next_stage()
 
 
-func _begin_stage_clear() -> void:
-	state = GameState.STAGE_CLEAR
-	intro_label.visible = false
-	hud.hide_message()
-	if level_overlay:
-		level_overlay.show_clear_flash(_advance_stage)
-
-
-func _advance_stage() -> void:
-	if level_overlay:
-		level_overlay.reset_all()
+func _advance_to_next_stage() -> void:
+	EventBus.stage_cleared.emit(stage_index)
 	stage_index += 1
 	if stage_index >= GameConfig.stages.size():
 		state = GameState.COMPLETE
@@ -459,7 +443,10 @@ func _advance_stage() -> void:
 			level_overlay.show_game_complete()
 		hud.hide_message()
 		return
-	_start_stage()
+	spawner.append_stage(stage_index, self)
+	_apply_stage_meta(false)
+	state = GameState.PLAYING
+	EventBus.stage_started.emit(stage_index)
 
 
 func _process(delta: float) -> void:
@@ -510,8 +497,12 @@ func _update_playing(scaled_delta: float, real_delta: float) -> void:
 	if level_overlay and level_overlay.is_stage_intro_active():
 		level_overlay.update_overlay(real_delta)
 	if player.state == BattlePlayer.State.ATTACKING:
-		player.update_attack(scaled_delta, combat, spawner.get_active_monsters())
+		var attack_delta := real_delta if time_scale < 1.0 else scaled_delta
+		var attack_finished := player.update_attack(attack_delta, combat, spawner.get_active_monsters())
+		if attack_finished:
+			resume_battle_time()
 	combat.update_afterimages(real_delta)
+	combat.update_slash_hit_fx(real_delta)
 	combat.update_resolve(scaled_delta, player)
 	combat.update_damage_numbers(real_delta)
 	if buff_orbs:
@@ -528,7 +519,9 @@ func _update_playing(scaled_delta: float, real_delta: float) -> void:
 	if ground_effects:
 		var effect_delta := 0.0 if time_scale < 1.0 else real_delta
 		ground_effects.update_effects(effect_delta, player)
+	_update_enemy_arrows(scaled_delta if time_scale >= 1.0 else 0.0)
 	spawner.update_boss(real_delta, player)
+	spawner.update_spawns(real_delta, self)
 	for monster in spawner.monsters:
 		if is_instance_valid(monster) and monster.has_method("update_death"):
 			monster.update_death(real_delta)
@@ -544,7 +537,7 @@ func _update_playing(scaled_delta: float, real_delta: float) -> void:
 		_begin_fail_death()
 		return
 	var summon_fx_active: bool = summons != null and summons.has_active_fx()
-	if spawner.all_dead() and not combat.is_resolving() and not combat.has_combat_presentation() and player.state == BattlePlayer.State.IDLE and not abilities.has_active_fx() and not summon_fx_active:
+	if spawner.all_dead() and not spawner.is_spawning() and not combat.is_resolving() and not combat.has_combat_presentation() and player.state == BattlePlayer.State.IDLE and not abilities.has_active_fx() and not summon_fx_active:
 		pending_stage_clear = true
 		_try_finish_stage_clear()
 
@@ -566,13 +559,13 @@ func _on_fail_death_finished() -> void:
 
 
 func _draw_hit_fx_overlay() -> void:
+	if combat:
+		combat.draw_slash_hit_fx(hit_fx_overlay)
 	if abilities:
 		abilities.draw_hit_fx(hit_fx_overlay)
 
 
 func _draw() -> void:
-	if blood_stains:
-		blood_stains.draw_stains(self)
 	if fail_animator:
 		fail_animator.draw_flying_spears(self)
 	if particles:
@@ -647,23 +640,18 @@ func _handle_pointer(screen_pos: Vector2, phase: String) -> void:
 	if state == GameState.MENU:
 		if phase == "down":
 			hud.hide_message()
-			state = GameState.STAGE_INTRO
-			_start_stage()
+			start_game()
+			_start_run()
 		return
 	if state == GameState.FAIL or state == GameState.COMPLETE or state == GameState.STAGE_FAIL:
 		if phase == "down":
 			hud.hide_message()
 			start_game()
-			state = GameState.STAGE_INTRO
-			_start_stage()
-		return
-	if state == GameState.STAGE_INTRO:
-		if phase == "down":
-			_finish_stage_intro()
+			_start_run()
 		return
 	if state == GameState.LEVEL_UP:
 		return
-	if state == GameState.PAUSED or state == GameState.FAIL_DEATH or state == GameState.STAGE_CLEAR:
+	if state == GameState.PAUSED or state == GameState.FAIL_DEATH:
 		return
 	if phase == "down" and hud.is_pause_button_at(screen_pos):
 		return
@@ -687,20 +675,48 @@ func is_in_bounds(pos: Vector2) -> bool:
 	return pos.x >= 0 and pos.y >= 0 and pos.x <= w and pos.y <= h
 
 
-func spawn_arrow(from_pos: Vector2, to_pos: Vector2, damage: int, kind_id: String = "") -> void:
-	var dir := (to_pos - from_pos).normalized()
-	var arrow := ColorRect.new()
-	var is_fire := kind_id == "FIRE_MAGE"
-	arrow.size = Vector2(10 if not is_fire else 8, 4 if not is_fire else 8)
-	arrow.color = Color(1.0, 0.35, 0.12) if is_fire else Color(0.9, 0.8, 0.2)
-	arrow.position = from_pos
-	projectiles.add_child(arrow)
-	var tween := create_tween()
-	var target := from_pos + dir * 300.0
-	tween.tween_property(arrow, "position", target, 0.8)
-	tween.tween_callback(func():
-		if is_instance_valid(arrow):
-			if arrow.position.distance_to(player.global_position) < 20.0:
-				player.take_damage(damage)
-			arrow.queue_free()
-	)
+func spawn_arrow(from_pos: Vector2, to_pos: Vector2, damage: int, speed: float = 85.0) -> void:
+	EnemyArrowScript.spawn(self, from_pos, to_pos, damage, speed)
+
+
+func _clear_projectiles() -> void:
+	if projectiles == null:
+		return
+	for child in projectiles.get_children():
+		if is_instance_valid(child):
+			child.queue_free()
+
+
+func _update_enemy_arrows(delta: float) -> void:
+	if projectiles == null:
+		return
+	for child in projectiles.get_children():
+		if child is EnemyArrow:
+			(child as EnemyArrow).update_arrow(delta)
+
+
+func block_projectiles_on_path_segment(
+	from: Vector2,
+	to: Vector2,
+	segment_index: int,
+	actor: BattlePlayer
+) -> void:
+	if projectiles == null or actor == null:
+		return
+	if from.distance_squared_to(to) < 0.000001:
+		return
+	var block_pad := actor.get_effective_radius() * 0.38
+	for child in projectiles.get_children():
+		if not child is EnemyArrow:
+			continue
+		var arrow := child as EnemyArrow
+		if not arrow.is_alive():
+			continue
+		var key := "%d:%d" % [arrow.get_instance_id(), segment_index]
+		if actor.hit_projectiles_this_attack.has(key):
+			continue
+		var dist := MathUtils.point_segment_distance(arrow.global_position, from, to)
+		if dist > EnemyArrow.HIT_RADIUS + block_pad:
+			continue
+		actor.hit_projectiles_this_attack[key] = true
+		arrow.destroy_blocked(from, to)

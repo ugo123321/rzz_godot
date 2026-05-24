@@ -15,7 +15,7 @@ func _process(_delta: float) -> void:
 func _draw() -> void:
 	if combat == null:
 		return
-	var font := ThemeDB.fallback_font
+	var font := PixelUiHelper.get_ui_font()
 	for dn in combat.damage_numbers:
 		var t := clampf(float(dn.life) / float(dn.max_life), 0.0, 1.0)
 		var pos: Vector2 = dn.pos - global_position

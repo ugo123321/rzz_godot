@@ -300,7 +300,7 @@ func _draw_warning_countdown() -> void:
 	var sec := maxi(1, int(ceil(warning_timer)))
 	var pulse := 0.88 + sin(warning_pulse * 2.2) * 0.12
 	var center := Vector2(logical_w * 0.5, logical_h * 0.46)
-	var font := ThemeDB.fallback_font
+	var font := PixelUiHelper.get_ui_font()
 	var font_size := 52
 	var text := str(sec)
 	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)

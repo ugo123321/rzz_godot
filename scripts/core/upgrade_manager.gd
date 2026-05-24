@@ -3,7 +3,7 @@ class_name UpgradeManager
 
 var active := false
 var choices: Array = []
-var rolled_rarity := "white"
+var rolled_rarity := "blue"
 var popup_timer := 0.0
 var popup_duration := 0.45
 
@@ -52,9 +52,9 @@ func select_upgrade(index: int, player: Node) -> Dictionary:
 func _roll_rarity() -> String:
 	var r := randf()
 	var acc := 0.0
-	for key in ["white", "blue", "purple", "orange"]:
+	for key in ["blue", "purple", "orange"]:
 		var fx := GameConfig.get_upgrade_fx(key)
-		acc += float(fx.get("chance", 0.25))
+		acc += float(fx.get("chance", 0.0))
 		if r <= acc:
 			return key
-	return "white"
+	return "blue"

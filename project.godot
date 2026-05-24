@@ -37,6 +37,10 @@ window/handheld/orientation=1
 
 enabled=PackedStringArray("res://addons/AsepriteWizard/plugin.cfg", "res://addons/godot_mcp/plugin.cfg")
 
+[gui]
+
+theme/default_font="res://assets/ui/Fonts/NotoSansSC-Regular.otf"
+
 [physics]
 
 3d/physics_engine="Jolt Physics"

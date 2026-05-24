@@ -40,7 +40,7 @@ func reload() -> void:
 	upgrades = _load_array("upgrades")
 	upgrade_fx = {}
 	for row in _load_array("upgrade_fx"):
-		upgrade_fx[str(row.get("rarity", "white"))] = row
+		upgrade_fx[str(row.get("rarity", "blue"))] = row
 	tuning = {}
 	for row in _load_array("game_tuning"):
 		tuning[str(row.get("key", ""))] = row.get("value")
@@ -74,8 +74,17 @@ func get_upgrade(id: String) -> Dictionary:
 	return {}
 
 
+## 按 category 筛选升级（如 "auto_fireball" = 普攻火球系强化）。
+func get_upgrades_by_category(category: String) -> Array:
+	var result: Array = []
+	for u in upgrades:
+		if str(u.get("category", "")) == category:
+			result.append(u)
+	return result
+
+
 func get_upgrade_fx(rarity: String) -> Dictionary:
-	return upgrade_fx.get(rarity, upgrade_fx.get("white", {}))
+	return upgrade_fx.get(rarity, upgrade_fx.get("blue", {}))
 
 
 func get_chapter_for_stage(stage_index: int) -> Dictionary:

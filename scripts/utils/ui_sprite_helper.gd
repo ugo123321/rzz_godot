@@ -110,48 +110,31 @@ static func _ki_fill_modulate(ratio: float, is_ready: bool) -> Color:
 
 
 static func _draw_ki_ready_glow(canvas: CanvasItem, rect: Rect2, ratio: float) -> void:
-	var pulse := 0.85 + sin(Time.get_ticks_msec() * 0.011) * 0.15
-	var frame_tex := get_region_texture(BAR_FRAME_REGION)
-	var fill_tex := get_region_texture(BAR_FILL_KI_REGION)
-	if frame_tex == null:
-		return
-
+	var pulse := 0.56 + sin(Time.get_ticks_msec() * 0.009) * 0.28
+	var glow_base := KI_GLOW_SKY.lerp(KI_GLOW_FILL, 0.35)
+	var ready_boost := 0.8 + 0.2 * clampf(ratio, 0.0, 1.0)
+	var cy := rect.position.y + rect.size.y * 0.5
+	var base_r := rect.size.y * 0.5
+	var seg_left := rect.position.x + base_r
+	var seg_right := rect.position.x + rect.size.x - base_r
 	for i in range(3):
 		var expand := 8.0 - float(i) * 2.5
-		var glow_rect := Rect2(
-			rect.position.x - expand,
-			rect.position.y - expand,
-			rect.size.x + expand * 2.0,
-			rect.size.y + expand * 2.0
-		)
-		var layer_a := pulse * (0.8 - float(i) * 0.1)
-		_draw_nine_patch_horizontal(
-			canvas,
-			frame_tex,
-			glow_rect,
-			BAR_FRAME_MARGINS,
-			Color(KI_GLOW_SKY.r, KI_GLOW_SKY.g, KI_GLOW_SKY.b, layer_a)
-		)
-
-	var pad := 5.0
-	var inner := Rect2(
-		rect.position.x + pad,
-		rect.position.y + pad,
-		maxf(0.0, rect.size.x - pad * 2.0),
-		maxf(0.0, rect.size.y - pad * 2.0)
-	)
-	if fill_tex and inner.size.x > 0.5 and inner.size.y > 0.5:
-		var fill_w := inner.size.x * clampf(ratio, 0.0, 1.0)
-		if fill_w > 0.5:
-			var fill_rect := Rect2(inner.position, Vector2(fill_w, inner.size.y))
-			for layer_a in [pulse * 0.9, pulse * 0.55]:
-				_draw_nine_patch_horizontal(
-					canvas,
-					fill_tex,
-					fill_rect,
-					BAR_FILL_MARGINS,
-					Color(KI_GLOW_FILL.r, KI_GLOW_FILL.g, KI_GLOW_FILL.b, layer_a)
-				)
+		var mix := 1.0 - float(i) * 0.26
+		var glow_col := glow_base
+		glow_col.a = pulse * 0.34 * mix * ready_boost
+		var r := base_r + expand
+		var x0 := int(floor(rect.position.x - expand))
+		var x1 := int(ceili(rect.position.x + rect.size.x + expand))
+		for xi in range(x0, x1 + 1):
+			var x := float(xi) + 0.5
+			var nearest_x := clampf(x, seg_left, seg_right)
+			var dx := absf(x - nearest_x)
+			if dx >= r:
+				continue
+			var half_h := sqrt(r * r - dx * dx)
+			var y0 := cy - half_h
+			var y1 := cy + half_h
+			canvas.draw_rect(Rect2(float(xi), y0, 1.0, y1 - y0), glow_col)
 
 
 static func _fit_bar_rect(x: float, y: float, width: float, height: float) -> Rect2:
@@ -223,9 +206,9 @@ static func draw_ki_bar(
 ) -> void:
 	var rect := _fit_bar_rect(x, y, width, height)
 	var fill_tint := _ki_fill_modulate(ratio, is_ready)
-	draw_horizontal_bar(canvas, rect, ratio, BAR_FILL_KI_REGION, BAR_FILL_MARGINS, fill_tint)
 	if is_ready:
 		_draw_ki_ready_glow(canvas, rect, ratio)
+	draw_horizontal_bar(canvas, rect, ratio, BAR_FILL_KI_REGION, BAR_FILL_MARGINS, fill_tint)
 
 
 static func make_pause_button_icon() -> Texture2D:

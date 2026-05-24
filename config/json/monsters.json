@@ -2,7 +2,7 @@
   {
     "kind_id": "NORMAL",
     "name_cn": "普通怪",
-    "hp": 80,
+    "hp": 320,
     "def": 4,
     "attack": 10,
     "attack_interval": 1.15,
@@ -17,7 +17,7 @@
     "ki_drain_on_hit": 0,
     "max_split_tier": 0,
     "split_count": 0,
-    "exp_reward": 2,
+    "exp_reward": 8,
     "character_folder": "Skeleton",
     "sprite_prefix": "Skeleton",
     "projectile_folder": ""
@@ -25,7 +25,7 @@
   {
     "kind_id": "ELITE",
     "name_cn": "高级怪",
-    "hp": 110,
+    "hp": 440,
     "def": 6,
     "attack": 14,
     "attack_interval": 1.05,
@@ -40,7 +40,7 @@
     "ki_drain_on_hit": 0,
     "max_split_tier": 0,
     "split_count": 0,
-    "exp_reward": 4,
+    "exp_reward": 16,
     "character_folder": "Elite Orc",
     "sprite_prefix": "Elite Orc",
     "projectile_folder": ""
@@ -48,7 +48,7 @@
   {
     "kind_id": "SHIELD",
     "name_cn": "盾牌怪",
-    "hp": 120,
+    "hp": 480,
     "def": 5,
     "attack": 12,
     "attack_interval": 1.25,
@@ -63,7 +63,7 @@
     "ki_drain_on_hit": 0,
     "max_split_tier": 0,
     "split_count": 0,
-    "exp_reward": 3,
+    "exp_reward": 12,
     "character_folder": "Knight",
     "sprite_prefix": "Knight",
     "projectile_folder": ""
@@ -71,7 +71,7 @@
   {
     "kind_id": "BERSERKER",
     "name_cn": "狂战士",
-    "hp": 90,
+    "hp": 360,
     "def": 2,
     "attack": 18,
     "attack_interval": 0.85,
@@ -86,7 +86,7 @@
     "ki_drain_on_hit": 10,
     "max_split_tier": 0,
     "split_count": 0,
-    "exp_reward": 4,
+    "exp_reward": 16,
     "character_folder": "Armored Axeman",
     "sprite_prefix": "Armored Axeman",
     "projectile_folder": ""
@@ -94,7 +94,7 @@
   {
     "kind_id": "SPLITTER",
     "name_cn": "分裂怪",
-    "hp": 70,
+    "hp": 280,
     "def": 2,
     "attack": 8,
     "attack_interval": 1.2,
@@ -109,7 +109,7 @@
     "ki_drain_on_hit": 0,
     "max_split_tier": 3,
     "split_count": 2,
-    "exp_reward": 3,
+    "exp_reward": 12,
     "character_folder": "Slime",
     "sprite_prefix": "Slime",
     "projectile_folder": ""
@@ -117,7 +117,7 @@
   {
     "kind_id": "ARCHER",
     "name_cn": "射箭怪",
-    "hp": 75,
+    "hp": 300,
     "def": 3,
     "attack": 12,
     "attack_interval": 1.35,
@@ -132,7 +132,7 @@
     "ki_drain_on_hit": 0,
     "max_split_tier": 0,
     "split_count": 0,
-    "exp_reward": 3,
+    "exp_reward": 12,
     "character_folder": "Archer",
     "sprite_prefix": "Archer",
     "projectile_folder": "Arrow(projectile)"
@@ -140,7 +140,7 @@
   {
     "kind_id": "FIRE_MAGE",
     "name_cn": "火焰法师",
-    "hp": 70,
+    "hp": 280,
     "def": 2,
     "attack": 16,
     "attack_interval": 2.4,
@@ -155,7 +155,7 @@
     "ki_drain_on_hit": 0,
     "max_split_tier": 0,
     "split_count": 0,
-    "exp_reward": 3,
+    "exp_reward": 12,
     "character_folder": "Wizard",
     "sprite_prefix": "Wizard",
     "projectile_folder": "Magic(projectile)"

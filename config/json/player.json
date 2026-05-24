@@ -45,6 +45,11 @@
     "description": "触发圈最小半径"
   },
   {
+    "key": "trigger_ring_fade_in",
+    "value": 0.35,
+    "description": "攻击后触发圈渐显时长(s)"
+  },
+  {
     "key": "ki_per_pixel",
     "value": 0.18,
     "description": "划线每像素消耗气力"
@@ -67,22 +72,22 @@
   {
     "key": "auto_dart_interval",
     "value": 0.5,
-    "description": "自动飞镖间隔"
+    "description": "自动火球间隔"
   },
   {
     "key": "auto_dart_damage_mult",
     "value": 0.2,
-    "description": "自动飞镖伤害倍率"
+    "description": "自动火球伤害倍率"
   },
   {
     "key": "auto_dart_speed",
     "value": 420,
-    "description": "自动飞镖速度"
+    "description": "自动火球速度"
   },
   {
     "key": "auto_dart_life",
     "value": 0.9,
-    "description": "自动飞镖存活时间"
+    "description": "自动火球存活时间"
   },
   {
     "key": "character_folder",

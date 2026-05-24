@@ -195,9 +195,24 @@
     "description": "死亡错峰间隔"
   },
   {
+    "key": "monster_death_fade",
+    "value": 0.28,
+    "description": "怪物死亡淡出时长"
+  },
+  {
     "key": "monster_spawn_anim",
-    "value": 0.42,
+    "value": 0.6,
     "description": "怪物出生动画时长"
+  },
+  {
+    "key": "monster_spawn_interval",
+    "value": 0.00,
+    "description": "怪物逐个生成间隔"
+  },
+  {
+    "key": "monster_spawn_wave_delay",
+    "value": 0.55,
+    "description": "新一波怪物开始生成前的缓冲"
   },
   {
     "key": "sakura_petal_count",
