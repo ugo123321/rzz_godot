@@ -1,0 +1,14 @@
+[
+  {
+    "chapter_id": 1,
+    "chapter_name": "第一章",
+    "stages_per_chapter": 4,
+    "description": "入门章节"
+  },
+  {
+    "chapter_id": 2,
+    "chapter_name": "第二章",
+    "stages_per_chapter": 4,
+    "description": "Boss 与高强度混合战"
+  }
+]

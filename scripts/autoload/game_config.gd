@@ -1,0 +1,130 @@
+extends Node
+
+const CONFIG_DIR := "res://config/json/"
+
+var chapters: Array = []
+var stages: Array = []
+var monsters: Dictionary = {}
+var player: Dictionary = {}
+var upgrades: Array = []
+var upgrade_fx: Dictionary = {}
+var tuning: Dictionary = {}
+var asset_mapping: Array = []
+var bosses: Dictionary = {}
+var buff_orbs: Dictionary = {}
+
+
+func _ready() -> void:
+	reload()
+	_apply_frame_settings() # after reload so target_fps from tuning applies
+
+
+func _apply_frame_settings() -> void:
+	var fps := int(get_tuning("target_fps", 60))
+	if fps > 0:
+		Engine.max_fps = fps
+		Engine.physics_ticks_per_second = fps
+	else:
+		Engine.max_fps = 0
+
+
+func reload() -> void:
+	chapters = _load_array("chapters")
+	stages = _load_array("stages")
+	monsters = {}
+	for row in _load_array("monsters"):
+		monsters[str(row.get("kind_id", ""))] = row
+	player = {}
+	for row in _load_array("player"):
+		player[str(row.get("key", ""))] = row.get("value")
+	upgrades = _load_array("upgrades")
+	upgrade_fx = {}
+	for row in _load_array("upgrade_fx"):
+		upgrade_fx[str(row.get("rarity", "white"))] = row
+	tuning = {}
+	for row in _load_array("game_tuning"):
+		tuning[str(row.get("key", ""))] = row.get("value")
+	asset_mapping = _load_array("asset_mapping")
+	bosses = _load_dict("bosses")
+	buff_orbs = _load_dict("buff_orbs")
+
+
+func get_tuning(key: String, default_value = null):
+	return tuning.get(key, default_value)
+
+
+func get_player_value(key: String, default_value = null):
+	return player.get(key, default_value)
+
+
+func get_monster(kind_id: String) -> Dictionary:
+	return monsters.get(kind_id, {})
+
+
+func get_stage(index: int) -> Dictionary:
+	if index < 0 or index >= stages.size():
+		return {}
+	return stages[index]
+
+
+func get_upgrade(id: String) -> Dictionary:
+	for u in upgrades:
+		if str(u.get("id", "")) == id:
+			return u
+	return {}
+
+
+func get_upgrade_fx(rarity: String) -> Dictionary:
+	return upgrade_fx.get(rarity, upgrade_fx.get("white", {}))
+
+
+func get_chapter_for_stage(stage_index: int) -> Dictionary:
+	var stage := get_stage(stage_index)
+	var chapter_id := int(stage.get("chapter_id", 1))
+	for c in chapters:
+		if int(c.get("chapter_id", 0)) == chapter_id:
+			return c
+	return {}
+
+
+func stage_stat_scale(stage_index: int) -> Dictionary:
+	var hp_growth := float(get_tuning("stage_hp_growth", 1.3))
+	var def_growth := float(get_tuning("stage_def_growth", 1.3))
+	return {
+		"hp": pow(hp_growth, stage_index),
+		"def": pow(def_growth, stage_index),
+	}
+
+
+func scaled_monster_stats(kind_id: String, stage_index: int) -> Dictionary:
+	var base := get_monster(kind_id).duplicate(true)
+	if base.is_empty():
+		return {}
+	var scale := stage_stat_scale(stage_index)
+	base["hp"] = int(round(float(base.get("hp", 1)) * scale.hp))
+	base["def"] = int(round(float(base.get("def", 0)) * scale.def))
+	return base
+
+
+func character_sprite_dir(folder: String, prefix: String) -> String:
+	return "res://assets/Characters/Characters(100x100)/%s/%s" % [folder, prefix]
+
+
+func _load_array(name: String) -> Array:
+	var path := CONFIG_DIR + name + ".json"
+	if not FileAccess.file_exists(path):
+		push_warning("Missing config: %s" % path)
+		return []
+	var file := FileAccess.open(path, FileAccess.READ)
+	var parsed = JSON.parse_string(file.get_as_text())
+	return parsed if parsed is Array else []
+
+
+func _load_dict(name: String) -> Dictionary:
+	var path := CONFIG_DIR + name + ".json"
+	if not FileAccess.file_exists(path):
+		push_warning("Missing config: %s" % path)
+		return {}
+	var file := FileAccess.open(path, FileAccess.READ)
+	var parsed = JSON.parse_string(file.get_as_text())
+	return parsed if parsed is Dictionary else {}

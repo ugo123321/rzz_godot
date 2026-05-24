@@ -1,0 +1,102 @@
+[
+  {
+    "key": "base_attack",
+    "value": 95,
+    "description": "基础攻击力"
+  },
+  {
+    "key": "base_hp",
+    "value": 100,
+    "description": "基础生命"
+  },
+  {
+    "key": "base_ki",
+    "value": 234,
+    "description": "基础气力上限"
+  },
+  {
+    "key": "base_crit_rate",
+    "value": 0.08,
+    "description": "暴击率"
+  },
+  {
+    "key": "base_crit_damage",
+    "value": 1.6,
+    "description": "暴击伤害倍率"
+  },
+  {
+    "key": "attack_speed",
+    "value": 2300,
+    "description": "路径冲刺速度 px/s"
+  },
+  {
+    "key": "hitbox_radius",
+    "value": 12,
+    "description": "碰撞半径"
+  },
+  {
+    "key": "trigger_radius_ratio",
+    "value": 0.06,
+    "description": "触发圈相对屏宽比例"
+  },
+  {
+    "key": "trigger_radius_min",
+    "value": 30,
+    "description": "触发圈最小半径"
+  },
+  {
+    "key": "ki_per_pixel",
+    "value": 0.18,
+    "description": "划线每像素消耗气力"
+  },
+  {
+    "key": "ki_regen_rate",
+    "value": 135,
+    "description": "气力恢复速度/s"
+  },
+  {
+    "key": "combo_damage_bonus",
+    "value": 0.01,
+    "description": "每连击伤害加成"
+  },
+  {
+    "key": "invincible_time",
+    "value": 0.45,
+    "description": "受击无敌时间"
+  },
+  {
+    "key": "auto_dart_interval",
+    "value": 0.5,
+    "description": "自动飞镖间隔"
+  },
+  {
+    "key": "auto_dart_damage_mult",
+    "value": 0.2,
+    "description": "自动飞镖伤害倍率"
+  },
+  {
+    "key": "auto_dart_speed",
+    "value": 420,
+    "description": "自动飞镖速度"
+  },
+  {
+    "key": "auto_dart_life",
+    "value": 0.9,
+    "description": "自动飞镖存活时间"
+  },
+  {
+    "key": "character_folder",
+    "value": "Swordsman",
+    "description": "主角素材文件夹"
+  },
+  {
+    "key": "sprite_prefix",
+    "value": "Swordsman",
+    "description": "主角精灵前缀"
+  },
+  {
+    "key": "sprite_scale",
+    "value": 2,
+    "description": "显示缩放(100px素材，2=200px显示)"
+  }
+]

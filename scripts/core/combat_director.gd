@@ -1,0 +1,318 @@
+extends Node
+class_name CombatDirector
+
+signal resolve_finished
+
+var resolving := false
+var round_attack_resolved := true
+var pending_hits: Array = []
+var resolve_timer := 0.0
+var damage_numbers: Array = []
+var afterimages: Array = []
+var _death_stagger_index := 0
+
+
+func reset_for_stage() -> void:
+	resolving = false
+	pending_hits.clear()
+	resolve_timer = 0.0
+	damage_numbers.clear()
+	afterimages.clear()
+	_death_stagger_index = 0
+	round_attack_resolved = true
+
+
+func begin_round_attack() -> void:
+	round_attack_resolved = false
+	pending_hits.clear()
+	resolving = false
+	resolve_timer = 0.0
+	afterimages.clear()
+	_death_stagger_index = 0
+
+
+func consume_round_attack() -> bool:
+	if round_attack_resolved:
+		return false
+	round_attack_resolved = true
+	return true
+
+
+func is_resolving() -> bool:
+	return resolving
+
+
+func should_monsters_attack(player: BattlePlayer) -> bool:
+	if player == null:
+		return true
+	if player.state == BattlePlayer.State.BULLET_TIME:
+		return false
+	if player.state == BattlePlayer.State.ATTACKING:
+		return false
+	if resolving:
+		return false
+	return true
+
+
+func has_combat_presentation() -> bool:
+	return resolving or not afterimages.is_empty() or not damage_numbers.is_empty()
+
+
+func schedule_death_fade() -> float:
+	var delay := float(_death_stagger_index) * float(GameConfig.get_tuning("combat_death_stagger", 0.012))
+	_death_stagger_index += 1
+	return delay
+
+
+func spawn_afterimage(pos: Vector2, angle: float) -> void:
+	var life := float(GameConfig.get_tuning("combat_afterimage_life", 0.1))
+	afterimages.append({
+		"pos": pos,
+		"angle": angle,
+		"life": life,
+		"max_life": life,
+	})
+
+
+func update_afterimages(delta: float) -> void:
+	if afterimages.is_empty() or delta <= 0.0:
+		return
+	var i := afterimages.size() - 1
+	while i >= 0:
+		var img: Dictionary = afterimages[i]
+		var life := float(img.get("life", 0.0)) - delta
+		if life <= 0.0:
+			afterimages.remove_at(i)
+		else:
+			img["life"] = life
+			afterimages[i] = img
+		i -= 1
+
+
+func get_path_preview_targets(path: Array, player: BattlePlayer, targets: Array) -> Dictionary:
+	var result := {}
+	if path.size() < 2 or player == null:
+		return result
+	var hit_pad := player.get_path_hit_pad()
+	for i in range(path.size() - 1):
+		var from: Vector2 = path[i]
+		var to: Vector2 = path[i + 1]
+		for m in targets:
+			if _is_non_targetable(m):
+				continue
+			var hit_r := 13.0
+			if m.has_method("get_hitbox_radius"):
+				hit_r = m.get_hitbox_radius()
+			if MathUtils.point_segment_distance(m.global_position, from, to) <= hit_r + hit_pad:
+				result[m.get_instance_id()] = m
+	return result
+
+
+func update_path_preview_highlights(path: Array, player: BattlePlayer, targets: Array) -> void:
+	var preview := get_path_preview_targets(path, player, targets) if path.size() >= 2 and player != null else {}
+	for m in targets:
+		if not is_instance_valid(m):
+			continue
+		var on := preview.has(m.get_instance_id())
+		if m.get("path_target_highlight") == null:
+			continue
+		if m.path_target_highlight != on:
+			m.path_target_highlight = on
+			m.queue_redraw()
+
+
+func clear_path_preview_highlights(targets: Array) -> void:
+	for m in targets:
+		if not is_instance_valid(m) or m.get("path_target_highlight") == null:
+			continue
+		if m.path_target_highlight:
+			m.path_target_highlight = false
+			m.queue_redraw()
+
+
+func queue_hit(monster: Node, segment_index: int, hit_pos: Vector2) -> void:
+	if monster == null or not is_instance_valid(monster):
+		return
+	for hit in pending_hits:
+		if hit.monster == monster:
+			return
+	pending_hits.append({
+		"monster": monster,
+		"segment_index": segment_index,
+		"pos": hit_pos,
+	})
+
+
+func begin_resolve(player: BattlePlayer) -> void:
+	if pending_hits.is_empty():
+		_finish_resolve(player)
+		return
+	resolving = true
+	resolve_timer = float(GameConfig.get_tuning("combat_first_hit_delay", 0.04))
+
+
+func update_resolve(delta: float, player: BattlePlayer) -> void:
+	if not resolving:
+		return
+	resolve_timer -= delta
+	if resolve_timer > 0.0:
+		return
+	if pending_hits.is_empty():
+		_finish_resolve(player)
+		return
+	var hit = pending_hits.pop_front()
+	_apply_hit(player, hit)
+	resolve_timer = float(GameConfig.get_tuning("combat_hit_interval", 0.012))
+
+
+func _apply_hit(player: BattlePlayer, hit: Dictionary) -> void:
+	var monster = hit.monster
+	if monster == null or not is_instance_valid(monster):
+		return
+	if _is_non_targetable(monster):
+		return
+	var seg_ang := 0.0
+	if player.attack_path.size() >= 2:
+		var seg_idx := mini(int(hit.segment_index), player.attack_path.size() - 2)
+		var from := player.attack_path[seg_idx]
+		var to := player.attack_path[seg_idx + 1]
+		seg_ang = (to - from).angle()
+
+	var dash_ang: float = (hit.pos - player.global_position).angle()
+	spawn_afterimage(hit.pos, dash_ang)
+
+	var dmg_info: Dictionary = player.get_attack_damage(player.combo_count)
+	var result: Dictionary = monster.take_damage(int(dmg_info.amount), player.global_position)
+	if bool(result.get("blocked_by_shield", false)):
+		spawn_damage_number(hit.pos, 0, false, false, Color("#9fb8d8"))
+		return
+	var combo_count: float = player.register_combo_hit()
+	spawn_damage_number(hit.pos, int(result.get("damage", 0)), bool(dmg_info.is_crit))
+	var battle := get_tree().get_first_node_in_group("battle")
+	if battle:
+		if battle.particles:
+			battle.particles.hit_spark(hit.pos, bool(dmg_info.is_crit))
+			battle.particles.slash_trail(hit.pos, seg_ang)
+			battle.particles.slash_trail(player.global_position, dash_ang)
+		if bool(dmg_info.is_crit):
+			battle.shake_camera(6.0 + mini(float(combo_count) * 0.15, 4.0), 0.14)
+		else:
+			battle.shake_camera(3.0, 0.08)
+		AudioManager.play_hit(bool(dmg_info.is_crit))
+	player.trigger_combo_abilities(int(combo_count), monster.global_position)
+
+	if battle and battle.abilities:
+		battle.abilities.on_combo_hit(combo_count, hit.pos, seg_ang, player)
+
+	if bool(result.get("started_dying", false)):
+		if battle and battle.particles:
+			var tint := Color.WHITE
+			if monster is BattleMonster:
+				tint = monster.color
+			battle.particles.death_effect(monster.global_position, tint)
+		EventBus.monster_killed.emit(monster)
+
+
+func spawn_damage_number(pos: Vector2, damage: int, is_crit: bool, is_heal: bool = false, tint: Variant = null) -> void:
+	damage_numbers.append({
+		"pos": pos,
+		"damage": damage,
+		"is_crit": is_crit,
+		"is_heal": is_heal,
+		"color": tint,
+		"life": 0.85,
+		"max_life": 0.85,
+		"vy": -68.0,
+	})
+
+
+func update_damage_numbers(delta: float) -> void:
+	if damage_numbers.is_empty() or delta <= 0.0:
+		return
+	var i := damage_numbers.size() - 1
+	while i >= 0:
+		var dn: Dictionary = damage_numbers[i]
+		var life := float(dn.get("life", 0.0)) - delta
+		if life <= 0.0:
+			damage_numbers.remove_at(i)
+		else:
+			dn["life"] = life
+			dn["pos"] = dn.pos + Vector2(0.0, float(dn.get("vy", 0.0)) * delta)
+			damage_numbers[i] = dn
+		i -= 1
+
+
+func _finish_resolve(player: BattlePlayer) -> void:
+	resolving = false
+	pending_hits.clear()
+	_apply_clone_hits(player)
+	if player:
+		player.end_combo_turn()
+	resolve_finished.emit()
+
+
+func _apply_clone_hits(player: BattlePlayer) -> void:
+	if player == null or player.shadow_clones.is_empty():
+		return
+	var battle := get_tree().get_first_node_in_group("battle")
+	if battle == null or battle.spawner == null:
+		return
+	var monsters: Array = battle.spawner.get_active_monsters()
+	var clone_dmg := player.get_ability_damage(0.2)
+	var clone_r := player.get_effective_radius() * 0.7
+	for pos in player.get_shadow_clone_positions():
+		for m in monsters:
+			if _is_non_targetable(m):
+				continue
+			var hit_r := 13.0
+			if m.has_method("get_hitbox_radius"):
+				hit_r = m.get_hitbox_radius()
+			if pos.distance_to(m.global_position) > clone_r + hit_r:
+				continue
+			if m.has_method("take_damage"):
+				var result: Dictionary = m.take_damage(clone_dmg, pos)
+				spawn_damage_number(m.global_position, int(result.get("damage", 0)), false)
+				if bool(result.get("started_dying", false)):
+					EventBus.monster_killed.emit(m)
+
+
+func try_ice_burst(player: BattlePlayer, center: Vector2) -> void:
+	if player == null or not player.ice_ready:
+		return
+	player.ice_ready = false
+	var battle := get_tree().get_first_node_in_group("battle")
+	if battle == null or battle.spawner == null:
+		return
+	var monsters: Array = battle.spawner.get_active_monsters()
+	var dmg := player.get_ability_damage(0.30)
+	var radius := 90.0
+	for m in monsters:
+		if not is_instance_valid(m) or m.get("alive") == false:
+			continue
+		var hit_r := 13.0
+		if m.has_method("get_hitbox_radius"):
+			hit_r = m.get_hitbox_radius()
+		if center.distance_to(m.global_position) > radius + hit_r:
+			continue
+		if m is BattleMonster:
+			m.freeze(1.8)
+			m.vulnerable_mark = true
+		if m.has_method("take_damage"):
+			var result: Dictionary = m.take_damage(dmg, center)
+			spawn_damage_number(m.global_position, int(result.get("damage", 0)), false)
+			if bool(result.get("started_dying", false)):
+				EventBus.monster_killed.emit(m)
+	if battle.hud:
+		battle.hud.show_message("冰冻触发!", 1.2)
+
+
+func _is_non_targetable(monster: Node) -> bool:
+	if not is_instance_valid(monster):
+		return true
+	if monster.has_method("is_combat_targetable"):
+		return not monster.is_combat_targetable()
+	if monster.get("alive") == false:
+		return true
+	if monster.get("dying") == true:
+		return true
+	return false

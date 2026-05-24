@@ -1,0 +1,14 @@
+class_name GameState
+
+enum {
+	MENU,
+	STAGE_INTRO,
+	PLAYING,
+	LEVEL_UP,
+	STAGE_CLEAR,
+	FAIL_DEATH,
+	STAGE_FAIL,
+	FAIL,
+	COMPLETE,
+	PAUSED,
+}
