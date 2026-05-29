@@ -3,11 +3,12 @@ class_name MonsterSpawner
 
 var monsters: Array = []
 var spawn_clusters: Array = []
-var boss: CentipedeBoss = null
+var boss: Node = null
 
 var _spawn_queue: Array = []
 var _spawn_timer := 0.0
 var _pending_boss_stage := -1
+var _pending_boss_id := ""
 
 
 func reset() -> void:
@@ -44,8 +45,9 @@ func update_spawns(delta: float, battle: Node) -> void:
 	if _pending_boss_stage >= 0:
 		if _spawn_timer > 0.0:
 			return
-		_spawn_centipede_boss(battle, _pending_boss_stage)
+		_spawn_boss(battle, _pending_boss_stage, _pending_boss_id)
 		_pending_boss_stage = -1
+		_pending_boss_id = ""
 		return
 	if _spawn_queue.is_empty() or _spawn_timer > 0.0:
 		return
@@ -75,17 +77,21 @@ func _spawn_stage_content(stage_index: int, battle: Node) -> void:
 		return
 	_spawn_timer = maxf(_spawn_timer, _spawn_wave_delay())
 	var boss_id := str(stage.get("boss_id", ""))
-	if boss_id == "centipede":
+	if not boss_id.is_empty():
 		_pending_boss_stage = stage_index
+		_pending_boss_id = boss_id
 		return
 	var counts := {
-		"NORMAL": _scaled_count(int(stage.get("normal", 0)), stage_index, false),
-		"ELITE": _scaled_count(int(stage.get("elite", 0)), stage_index, false),
-		"SHIELD": _scaled_count(int(stage.get("shield", 0)), stage_index, true),
-		"BERSERKER": _scaled_count(int(stage.get("berserker", 0)), stage_index, false),
-		"SPLITTER": _scaled_count(int(stage.get("splitter", 0)), stage_index, false),
-		"ARCHER": _scaled_count(int(stage.get("archer", 0)), stage_index, false),
-		"FIRE_MAGE": _scaled_count(int(stage.get("fire_mage", 0)), stage_index, false),
+		"NORMAL": maxi(0, int(stage.get("normal", 0))),
+		"ELITE": maxi(0, int(stage.get("elite", 0))),
+		"SHIELD": maxi(0, int(stage.get("shield", 0))),
+		"BERSERKER": maxi(0, int(stage.get("berserker", 0))),
+		"SPLITTER": maxi(0, int(stage.get("splitter", 0))),
+		"ARCHER": maxi(0, int(stage.get("archer", 0))),
+		"FIRE_MAGE": maxi(0, int(stage.get("fire_mage", 0))),
+		"SHOTGUN": maxi(0, int(stage.get("shotgun", 0))),
+		"CROSS_SHOOTER": maxi(0, int(stage.get("cross_shooter", 0))),
+		"BOUNCE_SLIME": maxi(0, int(stage.get("bounce_slime", 0))),
 	}
 	_init_clusters(battle)
 	for kind_id in counts.keys():
@@ -95,8 +101,10 @@ func _spawn_stage_content(stage_index: int, battle: Node) -> void:
 
 
 func get_active_monsters() -> Array:
-	if boss and is_instance_valid(boss) and boss.phase == CentipedeBoss.Phase.ACTIVE:
-		return boss.get_active_segments()
+	if boss and is_instance_valid(boss) and boss.has_method("is_boss_active") and boss.is_boss_active():
+		if boss.has_method("get_active_segments"):
+			return boss.get_active_segments()
+		return [boss]
 	var result: Array = []
 	for m in monsters:
 		if _is_combat_targetable(m):
@@ -140,6 +148,7 @@ func _clear_spawn_schedule() -> void:
 	_spawn_queue.clear()
 	_spawn_timer = 0.0
 	_pending_boss_stage = -1
+	_pending_boss_id = ""
 
 
 func _spawn_interval() -> float:
@@ -148,18 +157,6 @@ func _spawn_interval() -> float:
 
 func _spawn_wave_delay() -> float:
 	return float(GameConfig.get_tuning("monster_spawn_wave_delay", 0.55))
-
-
-func _scaled_count(raw: int, stage_index: int, is_shield: bool) -> int:
-	if raw <= 0:
-		return 0
-	var scale := float(GameConfig.get_tuning("stage_monster_scale", 1.3))
-	var count_mul := float(GameConfig.get_tuning("stage_count_mul", 2.0 / 3.0))
-	var shield_mul := float(GameConfig.get_tuning("shield_count_mul", 1.0 / 3.0))
-	var value := float(raw) * pow(scale, stage_index) * count_mul
-	if is_shield:
-		value *= shield_mul
-	return maxi(0, int(round(value)))
 
 
 func _init_clusters(battle: Node) -> void:
@@ -265,8 +262,15 @@ func spawn_split_children(parent: BattleMonster) -> Array:
 	return children
 
 
-func _spawn_centipede_boss(battle: Node, stage_index: int) -> void:
-	boss = CentipedeBoss.new()
+func _spawn_boss(battle: Node, stage_index: int, boss_id: String) -> void:
+	match boss_id:
+		"centipede":
+			boss = CentipedeBoss.new()
+		"lancer_knight":
+			boss = LancerBoss.new()
+		_:
+			push_warning("MonsterSpawner: unknown boss_id %s" % boss_id)
+			return
 	boss.setup(battle, stage_index)
 	battle.monster_container.add_child(boss)
 

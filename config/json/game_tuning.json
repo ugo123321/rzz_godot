@@ -41,12 +41,12 @@
   },
   {
     "key": "stage_hp_growth",
-    "value": 1.3,
+    "value": 1.2,
     "description": "关卡HP缩放幂次"
   },
   {
     "key": "stage_def_growth",
-    "value": 1.3,
+    "value": 1.1,
     "description": "关卡DEF缩放幂次"
   },
   {
@@ -195,24 +195,9 @@
     "description": "死亡错峰间隔"
   },
   {
-    "key": "monster_death_fade",
-    "value": 0.28,
-    "description": "怪物死亡淡出时长"
-  },
-  {
     "key": "monster_spawn_anim",
-    "value": 0.6,
+    "value": 0.42,
     "description": "怪物出生动画时长"
-  },
-  {
-    "key": "monster_spawn_interval",
-    "value": 0.00,
-    "description": "怪物逐个生成间隔"
-  },
-  {
-    "key": "monster_spawn_wave_delay",
-    "value": 0.55,
-    "description": "新一波怪物开始生成前的缓冲"
   },
   {
     "key": "sakura_petal_count",
@@ -243,5 +228,25 @@
     "key": "target_fps",
     "value": 60,
     "description": "目标帧率(0=不限制)"
+  },
+  {
+    "key": "stage_monster_base",
+    "value": 8,
+    "description": "第1关怪物总数（stages表为权威）"
+  },
+  {
+    "key": "stage_monster_per_stage",
+    "value": 1,
+    "description": "每过一关怪物总数+1"
+  },
+  {
+    "key": "stage_type_unlock_interval",
+    "value": 2,
+    "description": "每N关解锁下一种怪物"
+  },
+  {
+    "key": "stage_atk_growth",
+    "value": 1.12,
+    "description": "关卡攻击缩放幂次"
   }
 ]

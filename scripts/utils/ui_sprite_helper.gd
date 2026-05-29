@@ -216,7 +216,44 @@ static func make_pause_button_icon() -> Texture2D:
 
 
 static func make_pause_button_texture() -> Texture2D:
-	return get_region_texture(PAUSE_BUTTON_REGION)
+	var key := "pause_button_pixel_v2"
+	if _cache.has(key):
+		return _cache[key]
+	var image := Image.create(18, 18, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	var border_dark := Color("#1f2430")
+	var border_mid := Color("#4a566c")
+	var panel_fill := Color("#2d3647")
+	var panel_hi := Color("#6f7d97")
+	var bar_col := Color("#d6e2ff")
+	var shadow_col := Color("#0f1420")
+	for y in range(1, 17):
+		for x in range(1, 17):
+			image.set_pixel(x, y, panel_fill)
+	for x in range(1, 17):
+		image.set_pixel(x, 1, border_dark)
+		image.set_pixel(x, 16, border_dark)
+	for y in range(1, 17):
+		image.set_pixel(1, y, border_dark)
+		image.set_pixel(16, y, border_dark)
+	for x in range(2, 16):
+		image.set_pixel(x, 2, panel_hi)
+	for y in range(2, 16):
+		image.set_pixel(2, y, panel_hi)
+	for x in range(2, 16):
+		image.set_pixel(x, 15, border_mid)
+	for y in range(2, 16):
+		image.set_pixel(15, y, border_mid)
+	for y in range(4, 14):
+		image.set_pixel(6, y, bar_col)
+		image.set_pixel(7, y, bar_col)
+		image.set_pixel(11, y, bar_col)
+		image.set_pixel(12, y, bar_col)
+		image.set_pixel(8, y, shadow_col)
+		image.set_pixel(13, y, shadow_col)
+	var tex := ImageTexture.create_from_image(image)
+	_cache[key] = tex
+	return tex
 
 
 static func style_pause_button(btn: TextureButton) -> void:

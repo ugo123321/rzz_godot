@@ -9,3 +9,5 @@ signal monster_killed(monster: Node)
 signal exp_changed(level: int, exp: int, exp_to_next: int)
 signal upgrade_selected(upgrade_id: String)
 signal combo_changed(combo: int)
+signal gold_changed(total_gold: int)
+signal equipment_changed

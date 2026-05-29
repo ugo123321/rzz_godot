@@ -34,6 +34,10 @@ var logical_w := 390.0
 var logical_h := 700.0
 
 
+func is_boss_active() -> bool:
+	return phase == Phase.ACTIVE
+
+
 func get_hp_ratio() -> float:
 	return clampf(float(hp) / maxf(1.0, float(max_hp)), 0.0, 1.0)
 
@@ -146,6 +150,10 @@ func apply_damage(raw_damage: int, hit_segment, _from_pos: Vector2) -> Dictionar
 	if hp <= 0:
 		_defeat()
 	return {"damage": actual, "is_crit": false}
+
+
+func apply_burn_dot(_duration: float, _dps: int) -> void:
+	pass
 
 
 func get_body_draw_alpha() -> float:

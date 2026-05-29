@@ -74,7 +74,12 @@ func get_upgrade(id: String) -> Dictionary:
 	return {}
 
 
-## 按 category 筛选升级（如 "auto_fireball" = 普攻火球系强化）。
+## 升级特效是否在怪物图层下方绘制（1=下方，0=上方）。
+func upgrade_fx_below_monsters(upgrade_id: String) -> bool:
+	return int(get_upgrade(upgrade_id).get("fx_below_monsters", 0)) != 0
+
+
+## 按 category 筛选升级（如 "auto_bullet" = 普攻子弹系强化）。
 func get_upgrades_by_category(category: String) -> Array:
 	var result: Array = []
 	for u in upgrades:
@@ -97,11 +102,13 @@ func get_chapter_for_stage(stage_index: int) -> Dictionary:
 
 
 func stage_stat_scale(stage_index: int) -> Dictionary:
-	var hp_growth := float(get_tuning("stage_hp_growth", 1.3))
-	var def_growth := float(get_tuning("stage_def_growth", 1.3))
+	var hp_growth := float(get_tuning("stage_hp_growth", 1.2))
+	var def_growth := float(get_tuning("stage_def_growth", 1.1))
+	var atk_growth := float(get_tuning("stage_atk_growth", 1.12))
 	return {
 		"hp": pow(hp_growth, stage_index),
 		"def": pow(def_growth, stage_index),
+		"atk": pow(atk_growth, stage_index),
 	}
 
 
@@ -112,6 +119,7 @@ func scaled_monster_stats(kind_id: String, stage_index: int) -> Dictionary:
 	var scale := stage_stat_scale(stage_index)
 	base["hp"] = int(round(float(base.get("hp", 1)) * scale.hp))
 	base["def"] = int(round(float(base.get("def", 0)) * scale.def))
+	base["attack"] = int(round(float(base.get("attack", 1)) * scale.atk))
 	return base
 
 

@@ -8,7 +8,13 @@
   {
     "chapter_id": 2,
     "chapter_name": "第二章",
-    "stages_per_chapter": 4,
+    "stages_per_chapter": 6,
     "description": "Boss 与高强度混合战"
+  },
+  {
+    "chapter_id": 3,
+    "chapter_name": "第三章",
+    "stages_per_chapter": 10,
+    "description": "新怪种逐步登场，终局对战千足虫"
   }
 ]

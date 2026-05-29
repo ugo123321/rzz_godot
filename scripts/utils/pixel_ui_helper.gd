@@ -322,12 +322,12 @@ static func get_play_area_bottom(viewport_h: float) -> float:
 static func compute_hud_layout(
 	viewport_size: Vector2,
 	player: BattlePlayer,
-	boss: CentipedeBoss
+	boss: Node = null
 ) -> Dictionary:
 	var pad := 12.0
 	var ki_y := 30.0
 	var ki_h := 22.0
-	var show_boss_bar := boss != null and boss.phase == CentipedeBoss.Phase.ACTIVE
+	var show_boss_bar: bool = boss != null and boss.has_method("is_boss_active") and boss.is_boss_active()
 	var boss_bar_h := 22.0 if show_boss_bar else 0.0
 	var boss_bar_y := ki_y + ki_h + 6.0
 	var buff_row_y := boss_bar_y + boss_bar_h + (6.0 if show_boss_bar else 8.0)
@@ -437,34 +437,64 @@ static func draw_compact_hp_bar(
 	hp: int,
 	max_hp: int,
 	bar_w: float = 30.0,
-	bar_h: float = 5.0
+	bar_h: float = 5.0,
+	style: Dictionary = {}
 ) -> void:
 	var ratio := clampf(float(hp) / maxf(1.0, float(max_hp)), 0.0, 1.0)
 	var bar_x := top_center.x - bar_w * 0.5
 	var top_y := top_center.y
-	draw_pixel_panel(canvas, Rect2(bar_x, top_y, bar_w, bar_h), Color("#281820"), Color("#c84848"), 1)
+	var border_color: Color = Color(str(style.get("border_color", "#1a1020")))
+	var panel_fill: Color = Color(str(style.get("panel_fill", "#201018")))
+	var empty_a: Color = Color(str(style.get("empty_a", "#2f1418")))
+	var empty_b: Color = Color(str(style.get("empty_b", "#3a1a20")))
+	var fill_color: Color = Color(str(style.get("fill_color", "#c83030")))
+	var shine_color: Color = Color(str(style.get("shine_color", "#ff7a7a")))
+	draw_pixel_panel(canvas, Rect2(bar_x, top_y, bar_w, bar_h), panel_fill, border_color, 1)
 	var inner_x := bar_x + 1.0
 	var inner_y := top_y + 1.0
 	var inner_w := bar_w - 2.0
 	var inner_h := bar_h - 2.0
 	var fill_w := inner_w * ratio
-	canvas.draw_rect(Rect2(inner_x, inner_y, inner_w, inner_h), Color("#3a1818"))
-	if fill_w > 0.0:
-		canvas.draw_rect(Rect2(inner_x, inner_y, fill_w, inner_h), Color("#c83030"))
+	canvas.draw_rect(Rect2(inner_x, inner_y, inner_w, inner_h), empty_a)
+	var inner_wi := maxi(1, int(floor(inner_w)))
+	var inner_hi := maxi(1, int(floor(inner_h)))
+	var segment_gap := maxi(1, int(style.get("segment_gap", 1)))
+	var segment_count := int(style.get("segment_count", 0))
+	if segment_count <= 0:
+		segment_count = maxi(6, int(floor(float(inner_wi + segment_gap) / 4.0)))
+	segment_count = clampi(segment_count, 1, inner_wi)
+	while segment_count > 1 and (segment_count + (segment_count - 1) * segment_gap) > inner_wi:
+		segment_count -= 1
+	var seg_w := maxi(1, int(floor(float(inner_wi - (segment_count - 1) * segment_gap) / float(segment_count))))
+	var total_seg_w := segment_count * seg_w + (segment_count - 1) * segment_gap
+	var seg_start_x := int(floor(inner_x + (inner_wi - total_seg_w) * 0.5))
+	var fill_limit := int(floor(inner_x + fill_w))
+	for i in range(segment_count):
+		var sx := seg_start_x + i * (seg_w + segment_gap)
+		var slot_col := empty_a if i % 2 == 0 else empty_b
+		canvas.draw_rect(Rect2(float(sx), inner_y, float(seg_w), float(inner_hi)), slot_col)
+		if sx >= fill_limit:
+			continue
+		var painted_w := mini(seg_w, fill_limit - sx)
+		canvas.draw_rect(Rect2(float(sx), inner_y, float(painted_w), float(inner_hi)), fill_color)
 		canvas.draw_rect(
-			Rect2(inner_x, inner_y, fill_w, maxf(1.0, inner_h * 0.4)),
-			Color("#ff6868")
+			Rect2(float(sx), inner_y, float(painted_w), float(maxi(1, int(floor(float(inner_hi) * 0.34))))),
+			shine_color
 		)
+	if ratio <= 0.25 and ratio > 0.0 and int(Time.get_ticks_msec() / 180) % 2 == 0:
+		canvas.draw_rect(Rect2(bar_x, top_y, bar_w, 1.0), Color("#ffd070"))
 
 
-static func draw_boss_hp_bar(canvas: CanvasItem, boss: CentipedeBoss, layout: Dictionary) -> void:
+static func draw_boss_hp_bar(canvas: CanvasItem, boss: Node, layout: Dictionary) -> void:
 	if boss == null or not bool(layout.get("show_boss_bar", false)):
+		return
+	if not boss.has_method("get_hp_ratio") or not boss.has_method("get_display_name"):
 		return
 	var x: float = float(layout.get("ki_x", 0.0))
 	var y: float = float(layout.get("boss_bar_y", 0.0))
 	var w: float = float(layout.get("ki_w", 0.0))
 	var h: float = float(layout.get("boss_bar_h", 0.0))
-	var ratio := boss.get_hp_ratio()
+	var ratio: float = float(boss.call("get_hp_ratio"))
 	var border := maxi(2, 2)
 	draw_pixel_panel(canvas, Rect2(x, y, w, h), Color("#281820"), Color("#c84848"), border)
 	var inner_x := x + border
@@ -480,9 +510,11 @@ static func draw_boss_hp_bar(canvas: CanvasItem, boss: CentipedeBoss, layout: Di
 			Color("#ff6868")
 		)
 	draw_pixel_text(canvas, boss.get_display_name(), Vector2(x + 8.0, y + h * 0.5), 9, Color("#ffe0c8"), HORIZONTAL_ALIGNMENT_LEFT)
+	var boss_hp: int = int(boss.get("hp")) if boss.get("hp") != null else 0
+	var boss_max_hp: int = int(boss.get("max_hp")) if boss.get("max_hp") != null else 1
 	draw_pixel_text(
 		canvas,
-		"%d/%d" % [ceili(boss.hp), boss.max_hp],
+		"%d/%d" % [ceili(boss_hp), boss_max_hp],
 		Vector2(x + w - 8.0, y + h * 0.5),
 		8,
 		Color("#ffd0c0"),
@@ -529,20 +561,17 @@ static func draw_combo_banner(
 	if player == null:
 		return
 	var combo := player.combo_display_peak
-	if combo < 2 or player.combo_display_timer <= 0.0:
+	if combo < 2 or not player.is_combo_display_visible():
 		return
-	var fading := player.combo_count < 2.0
-	var fade_dur := 0.4 if fading else 0.6
+	var fading := player.combo_display_fading
+	var fade_dur := 0.4
 	var alpha := clampf(player.combo_display_timer / fade_dur, 0.0, 1.0) if fading else 1.0
 	var cx := viewport_w * 0.5
 	var cy := float(layout.get("combo_y", 0.0)) + 28.0
 	var main_size := get_combo_font_size(combo)
 	var sub_size := snap_pixel_font_size(maxi(PIXEL_FONT_BASE, int(round(float(main_size) * 0.52))))
 	var colors := get_combo_colors(combo)
-	var punch_t := 0.0
-	if not fading:
-		punch_t = clampf((player.combo_display_timer - 0.32) / 0.28, 0.0, 1.0)
-	var punch_scale := 1.0 + punch_t * (0.1 + float(mini(combo, 36)) * 0.006)
+	var punch_scale := 1.0
 	var main_color: Color = colors["main"]
 	main_color.a = alpha
 	var sub_color: Color = colors["sub"]

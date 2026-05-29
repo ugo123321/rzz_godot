@@ -14,23 +14,24 @@ const THUNDER_CFG := {
 }
 const WOLF_CFG := {
 	"speed": 118.0,
-	"aggro": 200.0,
+	"aggro": INF,
 	"atk_range": 36.0,
 	"atk_cd": 0.75,
-	"dmg_mult": 2.0,
+	"dmg_mult": 0.8,
 }
 const BULL_CFG := {
-	"aggro": 240.0,
+	"aggro": INF,
 	"charge_speed": 420.0,
-	"charge_dmg_mult": 2.5,
+	"charge_time": 1.4,
+	"charge_dmg_mult": 1,
 	"idle_cd": 1.1,
-	"dmg_mult": 3.0,
+	"dmg_mult": 0.8,
 }
 const GOD_CFG := {
 	"follow_speed": 52.0,
 	"atk_interval": 0.28,
 	"sword_speed": 540.0,
-	"dmg_mult": 2.0,
+	"dmg_mult": 1.2,
 	"orbit_dist": 14.0,
 }
 
@@ -82,10 +83,22 @@ func update(delta: float, player: BattlePlayer, monsters: Array) -> void:
 	_sync_companion_visuals()
 
 
-func draw_fx(canvas: Node2D) -> void:
-	_draw_thunder(canvas)
+func draw_fx(canvas: Node2D, below_monsters: bool) -> void:
+	_draw_thunder(canvas, below_monsters)
 	for s in god_swords:
+		if not _fx_on_layer(s, below_monsters):
+			continue
 		_draw_god_sword(canvas, s)
+
+
+func _with_upgrade_fx_layer(data: Dictionary, upgrade_id: String) -> Dictionary:
+	data["upgrade_id"] = upgrade_id
+	data["below_monsters"] = GameConfig.upgrade_fx_below_monsters(upgrade_id)
+	return data
+
+
+func _fx_on_layer(item: Dictionary, below_monsters: bool) -> bool:
+	return bool(item.get("below_monsters", false)) == below_monsters
 
 
 func _play_bottom() -> float:
@@ -104,13 +117,14 @@ func _get_pet_count_multiplier(player: BattlePlayer) -> int:
 
 
 func _get_desired_pet_count(player: BattlePlayer, upgrade_id: String) -> int:
-	var base := player.get_upgrade_level(upgrade_id)
-	if base <= 0:
+	var lv := player.get_upgrade_level(upgrade_id)
+	if lv <= 0:
 		return 0
 	var def := GameConfig.get_upgrade(upgrade_id)
 	if def.is_empty() or int(def.get("is_pet", 0)) == 0:
-		return base
-	return base * _get_pet_count_multiplier(player)
+		return lv
+	var per_level := maxi(1, int(def.get("apply_value", 1)))
+	return lv * per_level * _get_pet_count_multiplier(player)
 
 
 func _upgrade_id_for_type(type: String) -> String:
@@ -134,6 +148,8 @@ func _summon_deal_damage(m, damage: int, color: Color, from_pos: Vector2) -> voi
 		var result: Dictionary = m.take_damage(damage, from_pos)
 		if battle and battle.combat and int(result.get("damage", 0)) > 0:
 			battle.combat.spawn_damage_number(m.global_position, int(result.get("damage", 0)), false)
+			if battle.player and battle.player.has_method("on_summon_hit"):
+				battle.player.on_summon_hit()
 		if bool(result.get("started_dying", false)):
 			EventBus.monster_killed.emit(m)
 
@@ -202,6 +218,7 @@ func _spawn_companion(type: String, index: int, total: int, player: BattlePlayer
 		"charge_hit": {},
 		"walk_phase": MathUtils.rand_range(0.0, TAU),
 		"facing": 1.0,
+		"attack_timer": 0.0,
 		"lv": lv,
 		"damage": _companion_damage(player, cfg, lv),
 		"sprite": null,
@@ -266,7 +283,7 @@ func _spawn_thunder_strikes(player: BattlePlayer, monsters: Array) -> void:
 		target.x = clampf(target.x, 30.0, w - 30.0)
 		target.y = clampf(target.y, PLAY_TOP + 20.0, bottom - 20.0)
 		var dmg_mult := float(cfg.dmg_mult) * (1.0 + float(maxi(0, lv - 1)) * 0.06)
-		thunder_bolts.append({
+		thunder_bolts.append(_with_upgrade_fx_layer({
 			"pos": target,
 			"phase": "warn",
 			"timer": float(cfg.warn_time),
@@ -275,7 +292,7 @@ func _spawn_thunder_strikes(player: BattlePlayer, monsters: Array) -> void:
 			"sky_y": float(cfg.sky_y),
 			"bolt_points": null,
 			"explode_max": float(cfg.explode_time),
-		})
+		}, "heavenly_thunder"))
 
 
 func _generate_thunder_bolt_path(gx: float, gy: float, sky_y: float) -> Array:
@@ -335,6 +352,11 @@ func _update_thunder(delta: float, player: BattlePlayer, monsters: Array) -> voi
 
 
 func _update_wolf(c: Dictionary, delta: float, player: BattlePlayer, monsters: Array) -> void:
+	if str(c.get("state", "idle")) == "attacking":
+		c["attack_timer"] = float(c.get("attack_timer", 0.0)) - delta
+		if float(c.attack_timer) <= 0.0:
+			c.state = "idle"
+		return
 	c.walk_phase = float(c.walk_phase) + delta * 9.0
 	var target = null
 	var best := float(WOLF_CFG.aggro)
@@ -358,6 +380,8 @@ func _update_wolf(c: Dictionary, delta: float, player: BattlePlayer, monsters: A
 		c.atk_timer = float(c.atk_timer) - delta
 		if float(c.atk_timer) <= 0.0:
 			c.atk_timer = float(WOLF_CFG.atk_cd)
+			c.state = "attacking"
+			c.attack_timer = _companion_attack_anim_duration(c)
 			_summon_deal_damage(target, int(c.get("damage", 0)), Color("#c8d8b0"), c.pos)
 
 
@@ -412,7 +436,7 @@ func _update_bull(c: Dictionary, delta: float, player: BattlePlayer, monsters: A
 	c.facing = 1.0 if target.global_position.x >= cpos.x else -1.0
 	c.state = "charging"
 	c.charge_target = target.global_position
-	c.charge_timer = 1.4
+	c.charge_timer = float(BULL_CFG.charge_time)
 	c.charge_hit = {}
 	var lv := int(c.lv)
 	c.damage = player.get_ability_damage(float(BULL_CFG.charge_dmg_mult) * (1.0 + float(maxi(0, lv - 1)) * 0.08))
@@ -430,7 +454,7 @@ func _fire_god_sword(c: Dictionary, monsters: Array) -> void:
 	sorted.sort_custom(func(a, b): return c.pos.distance_to(a.global_position) < c.pos.distance_to(b.global_position))
 	var target = sorted[0]
 	var ang: float = Vector2(c.pos).angle_to_point(target.global_position)
-	god_swords.append({
+	god_swords.append(_with_upgrade_fx_layer({
 		"pos": c.pos + Vector2(0.0, -18.0),
 		"vel": Vector2(cos(ang), sin(ang)) * float(GOD_CFG.sword_speed),
 		"rot": ang,
@@ -440,7 +464,7 @@ func _fire_god_sword(c: Dictionary, monsters: Array) -> void:
 		"damage": int(c.get("damage", 0)),
 		"life": 2.5,
 		"hit_target": false,
-	})
+	}, "divine_god"))
 
 
 func _update_god(c: Dictionary, delta: float, player: BattlePlayer, monsters: Array) -> void:
@@ -514,6 +538,23 @@ func _update_companions(delta: float, player: BattlePlayer, monsters: Array) -> 
 		_update_god_swords(delta, monsters)
 
 
+func _companion_attack_anim_duration(c: Dictionary) -> float:
+	var sprite: AnimatedSprite2D = c.get("sprite")
+	if sprite == null or sprite.sprite_frames == null:
+		return 0.45
+	var frames: SpriteFrames = sprite.sprite_frames
+	var anim := SpriteHelper.ANIM_ATTACK01 if frames.has_animation(SpriteHelper.ANIM_ATTACK01) else SpriteHelper.ANIM_ATTACK
+	if not frames.has_animation(anim):
+		return 0.45
+	var count := frames.get_frame_count(anim)
+	if count <= 0:
+		return 0.45
+	var speed := frames.get_animation_speed(anim)
+	if speed <= 0.0:
+		speed = 12.0
+	return float(count) / speed
+
+
 func _create_companion_sprite(type: String) -> AnimatedSprite2D:
 	var upgrade_id := _upgrade_id_for_type(type)
 	var def := GameConfig.get_upgrade(upgrade_id)
@@ -522,7 +563,8 @@ func _create_companion_sprite(type: String) -> AnimatedSprite2D:
 	anim.sprite_frames = SpriteHelper.build_character_frames(folder, folder)
 	SpriteHelper.apply_pixel_art(anim)
 	var scale_val := float(GameConfig.get_tuning("monster_sprite_scale", 1.0))
-	anim.scale = Vector2.ONE * SpriteHelper.pixel_scale(scale_val * 0.85)
+	var size_mul := 1.1 if type in ["wolf", "bull"] else 0.85
+	anim.scale = Vector2.ONE * SpriteHelper.pixel_scale(scale_val * size_mul)
 	if anim.sprite_frames.has_animation(SpriteHelper.ANIM_IDLE):
 		anim.play(SpriteHelper.ANIM_IDLE)
 	companions_container.add_child(anim)
@@ -536,21 +578,44 @@ func _sync_companion_visuals() -> void:
 		var sprite: AnimatedSprite2D = c.sprite
 		sprite.global_position = c.pos
 		sprite.flip_h = float(c.facing) < 0.0
-		if str(c.type) == "wolf" and sprite.sprite_frames.has_animation(SpriteHelper.ANIM_WALK):
-			var moving := false
-			if battle and battle.spawner:
-				for m in battle.spawner.get_active_monsters():
-					if not is_instance_valid(m) or m.get("alive") == false:
-						continue
-					if c.pos.distance_to(m.global_position) > float(WOLF_CFG.atk_range):
-						moving = true
-						break
-			var want := SpriteHelper.ANIM_WALK if moving else SpriteHelper.ANIM_IDLE
-			if sprite.animation != want:
-				sprite.play(want)
-		elif str(c.type) == "bull" and str(c.state) == "charging":
-			if sprite.sprite_frames.has_animation(SpriteHelper.ANIM_WALK) and sprite.animation != SpriteHelper.ANIM_WALK:
-				sprite.play(SpriteHelper.ANIM_WALK)
+		if str(c.type) == "wolf":
+			var frames: SpriteFrames = sprite.sprite_frames
+			if str(c.get("state", "idle")) == "attacking":
+				var attack_anim := SpriteHelper.ANIM_ATTACK01 if frames.has_animation(SpriteHelper.ANIM_ATTACK01) else SpriteHelper.ANIM_ATTACK
+				if frames.has_animation(attack_anim) and sprite.animation != attack_anim:
+					sprite.play(attack_anim)
+			elif not SpriteHelper.is_playing_priority_anim(sprite):
+				var moving := false
+				if battle and battle.spawner:
+					var chase_target = null
+					var chase_best := float(WOLF_CFG.aggro)
+					for m in battle.spawner.get_active_monsters():
+						if not is_instance_valid(m) or m.get("alive") == false:
+							continue
+						var d: float = c.pos.distance_to(m.global_position)
+						if d < chase_best:
+							chase_best = d
+							chase_target = m
+					if chase_target != null:
+						moving = chase_best > float(WOLF_CFG.atk_range)
+				var want := SpriteHelper.ANIM_WALK if moving and frames.has_animation(SpriteHelper.ANIM_WALK) else SpriteHelper.ANIM_IDLE
+				if sprite.animation != want:
+					sprite.play(want)
+		elif str(c.type) == "bull":
+			var frames: SpriteFrames = sprite.sprite_frames
+			if str(c.state) == "charging":
+				var charge_time := float(BULL_CFG.charge_time)
+				var elapsed := charge_time - float(c.charge_timer)
+				if elapsed < _companion_attack_anim_duration(c):
+					var attack_anim := SpriteHelper.ANIM_ATTACK01 if frames.has_animation(SpriteHelper.ANIM_ATTACK01) else SpriteHelper.ANIM_ATTACK
+					if frames.has_animation(attack_anim):
+						if sprite.animation != attack_anim or not sprite.is_playing():
+							sprite.play(attack_anim)
+				elif frames.has_animation(SpriteHelper.ANIM_WALK) and sprite.animation != SpriteHelper.ANIM_WALK:
+					sprite.play(SpriteHelper.ANIM_WALK)
+			elif not SpriteHelper.is_playing_priority_anim(sprite):
+				if frames.has_animation(SpriteHelper.ANIM_IDLE) and sprite.animation != SpriteHelper.ANIM_IDLE:
+					sprite.play(SpriteHelper.ANIM_IDLE)
 
 
 func _clear_companion_sprites() -> void:
@@ -586,11 +651,13 @@ func _draw_thunder_explosion(canvas: Node2D, t: Dictionary) -> void:
 	canvas.draw_arc(local, r * prog * 0.7, 0.0, TAU, 28, Color(1.0, 1.0, 1.0, alpha * 0.5), 3.0)
 
 
-func _draw_thunder(canvas: Node2D) -> void:
+func _draw_thunder(canvas: Node2D, below_monsters: bool) -> void:
 	var cfg := THUNDER_CFG
 	var bolt_dur := float(cfg.bolt_time)
 	var offset := -canvas.global_position
 	for t in thunder_bolts:
+		if not _fx_on_layer(t, below_monsters):
+			continue
 		var cx: float = t.pos.x
 		var cy: float = t.pos.y
 		match str(t.phase):

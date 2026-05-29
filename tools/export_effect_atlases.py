@@ -71,6 +71,12 @@ EXPORTS = [
         "13.Gothicvania Magic Pack 8/Magic Pack 8 files/spritesheets",
         "water",
     ),
+    (
+        "9.Warped Explosion Pack 5/Explosions Pack 5 Files/Aseprite files/explosion-c.ase",
+        "9.Warped Explosion Pack 5/Explosions Pack 5 Files/aseprite",
+        "9.Warped Explosion Pack 5/Explosions Pack 5 Files/spritesheets",
+        "explosion-c",
+    ),
 ]
 
 

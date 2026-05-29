@@ -24,6 +24,10 @@ func take_damage(raw_damage: int, from_pos: Vector2) -> Dictionary:
 	return {"damage": 0, "is_crit": false}
 
 
+func apply_burn_dot(_duration: float, _dps: int) -> void:
+	pass
+
+
 func die() -> void:
 	pass
 

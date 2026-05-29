@@ -28,6 +28,9 @@ CHARACTERS = [
     "Werewolf",
     "Werebear",
     "Knight Templar",
+    "Skeleton Archer",
+    "Priest",
+    "Lancer",
 ]
 
 

@@ -29,6 +29,9 @@ CHARACTERS = [
     "Werewolf",
     "Werebear",
     "Knight Templar",
+    "Skeleton Archer",
+    "Priest",
+    "Lancer",
 ]
 
 # Files or directories relative to assets/
@@ -37,6 +40,20 @@ USED_PATHS: list[str] = [
     "ui/UI assets (1x).png",
     "ui/Fonts/FantasyRPGtext (size 8).ttf",
     "ui/Fonts/FantasyRPGtitle (size 11).ttf",
+    "ui/equipment/back_button.png",
+    "ui/equipment/buttom_bar.png",
+    "ui/equipment/decoration01.png",
+    "ui/equipment/detail_icon.png",
+    "ui/equipment/equipment_slot01.png",
+    "ui/equipment/equipment_slot02.png",
+    "ui/equipment/equipment_system_reference.png",
+    "ui/equipment/full_bg.png",
+    "ui/equipment/heart_icon.png",
+    "ui/equipment/information_bg.png",
+    "ui/equipment/power_icon.png",
+    "ui/equipment/sword_icon.png",
+    "ui/equipment/Synthesis _button.png",
+    "ui/equipment/top_bg.png",
     # Terrain props
     "Terrain/Rocks/6.png",
     "Terrain/Rocks/7.png",
@@ -53,6 +70,10 @@ USED_PATHS: list[str] = [
     "effects/2.Gothicvania Magic Pack N2 - Fire/Magic Pack Fire files/aseprite/fire.json",
     "effects/2.Gothicvania Magic Pack N2 - Fire/Magic Pack Fire files/spritesheets/fire.png",
     "effects/2.Gothicvania Magic Pack N2 - Fire/Magic Pack Fire files/sprites/fire",
+    "effects/2.Gothicvania Magic Pack N2 - Fire/Magic Pack Fire files/aseprite/flame-loop.json",
+    "effects/2.Gothicvania Magic Pack N2 - Fire/Magic Pack Fire files/spritesheets/flame-loop.png",
+    "effects/2.Gothicvania Magic Pack N2 - Fire/Magic Pack Fire files/sprites/flame-loop",
+    "effects/2.Gothicvania Magic Pack N2 - Fire/Magic Pack Fire files/Aseprite files/flame-loop.ase",
     "effects/3.Gothicvania Magic Pack N3/Magic Pack 3 files/aseprite/small-spark.json",
     "effects/3.Gothicvania Magic Pack N3/Magic Pack 3 files/aseprite/big-bolt.json",
     "effects/3.Gothicvania Magic Pack N3/Magic Pack 3 files/spritesheets/small-spark.png",
@@ -79,6 +100,10 @@ USED_PATHS: list[str] = [
     "effects/13.Gothicvania Magic Pack 8/Magic Pack 8 files/aseprite/water.json",
     "effects/13.Gothicvania Magic Pack 8/Magic Pack 8 files/spritesheets/water.png",
     "effects/13.Gothicvania Magic Pack 8/Magic Pack 8 files/sprites/water",
+    "effects/enemy_projectiles/aseprite/enemy_cross_magic.json",
+    "effects/enemy_projectiles/aseprite/enemy_shotgun_arrow.json",
+    "effects/enemy_projectiles/spritesheets/enemy_cross_magic.png",
+    "effects/enemy_projectiles/spritesheets/enemy_shotgun_arrow.png",
 ]
 
 
@@ -119,6 +144,20 @@ def remove_junction() -> None:
         print("Removed existing assets directory.")
 
 
+def copy_explosion_c() -> None:
+    import importlib.util
+
+    script = ROOT / "tools" / "copy_explosion_c.py"
+    spec = importlib.util.spec_from_file_location("copy_explosion_c", script)
+    if spec is None or spec.loader is None:
+        print(f"WARN: cannot load {script}", file=sys.stderr)
+        return
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    if mod.main() != 0:
+        print("WARN: explosion-c copy failed", file=sys.stderr)
+
+
 def main() -> int:
     if not SRC.is_dir():
         print(f"Reference library not found: {SRC}", file=sys.stderr)
@@ -129,6 +168,7 @@ def main() -> int:
         copy_path(rel)
     for name in CHARACTERS:
         copy_character(name)
+    copy_explosion_c()
     print(f"\nDone. Assets copied to {DEST}")
     return 0
 

@@ -12,7 +12,7 @@ const EFFECT_ATLAS := {
 		"fallback": "res://assets/effects/3.Gothicvania Magic Pack N3/Magic Pack 3 files/sprites/small-spark",
 		"fps": 12.0,
 	},
-	"fire_missile": {
+	"auto_bullet": {
 		"json": "res://assets/effects/5.GothicVania Magic Pack 5/Magic Pack 5 Files/aseprite/fire-missile.json",
 		"sheet": "res://assets/effects/5.GothicVania Magic Pack 5/Magic Pack 5 Files/spritesheets/fire-missile.png",
 		"fallback": "res://assets/effects/5.GothicVania Magic Pack 5/Magic Pack 5 Files/sprites/fire-missile/sprites",
@@ -37,9 +37,9 @@ const EFFECT_ATLAS := {
 		"fps": 12.0,
 	},
 	"spirit_bomb": {
-		"json": "res://assets/effects/5.GothicVania Magic Pack 5/Magic Pack 5 Files/aseprite/fireball.json",
-		"sheet": "res://assets/effects/5.GothicVania Magic Pack 5/Magic Pack 5 Files/spritesheets/fireball.png",
-		"fallback": "res://assets/effects/5.GothicVania Magic Pack 5/Magic Pack 5 Files/sprites/fireball/sprites",
+		"json": "res://assets/effects/3.Gothicvania Magic Pack N3/Magic Pack 3 files/aseprite/small-spark-3.json",
+		"sheet": "res://assets/effects/3.Gothicvania Magic Pack N3/Magic Pack 3 files/spritesheets/small-spark-3.png",
+		"fallback": "res://assets/effects/3.Gothicvania Magic Pack N3/Magic Pack 3 files/sprites/small-spark-3",
 		"fps": 12.0,
 	},
 	"fireball": {
@@ -66,16 +66,41 @@ const EFFECT_ATLAS := {
 		"tail_frames": 2,
 	},
 	"black_hole": {
-		"json": "res://assets/effects/7.Warped Explosion Pack 3/Explosions Pack 3 files/aseprite/explosion-j.json",
-		"sheet": "res://assets/effects/7.Warped Explosion Pack 3/Explosions Pack 3 files/spritesheets/explosion-j.png",
-		"fallback": "res://assets/effects/7.Warped Explosion Pack 3/Explosions Pack 3 files/Sprites/explosion-j",
+		"json": "res://assets/effects/10.GothicVania Magic Pack 7/Magic Pack 7 files/aseprite/vfx-d.json",
+		"sheet": "res://assets/effects/10.GothicVania Magic Pack 7/Magic Pack 7 files/spritesheets/vfx-d.png",
+		"fallback": "res://assets/effects/10.GothicVania Magic Pack 7/Magic Pack 7 files/sprites/vfx-d",
 		"fps": 12.0,
+		"max_frames": 9,
 	},
 	"whirl": {
-		"json": "res://assets/effects/6.GothicVania Magic Pack 6/Magic Pack 6/aseprite/slash.json",
-		"sheet": "res://assets/effects/6.GothicVania Magic Pack 6/Magic Pack 6/spritesheets/slash.png",
-		"fallback": "res://assets/effects/6.GothicVania Magic Pack 6/Magic Pack 6/sprites/slash",
+		"json": "res://assets/effects/6.GothicVania Magic Pack 6/Magic Pack 6/aseprite/electric-slash.json",
+		"sheet": "res://assets/effects/6.GothicVania Magic Pack 6/Magic Pack 6/spritesheets/electric-slash.png",
+		"fallback": "res://assets/effects/6.GothicVania Magic Pack 6/Magic Pack 6/sprites/slash-e",
+		"fps": 14.0,
+	},
+	"slash_e": {
+		"json": "res://assets/effects/6.GothicVania Magic Pack 6/Magic Pack 6/aseprite/electric-slash.json",
+		"sheet": "res://assets/effects/6.GothicVania Magic Pack 6/Magic Pack 6/spritesheets/electric-slash.png",
+		"fallback": "res://assets/effects/6.GothicVania Magic Pack 6/Magic Pack 6/sprites/slash-e",
+		"fps": 14.0,
+	},
+	"flame_loop": {
+		"json": "res://assets/effects/2.Gothicvania Magic Pack N2 - Fire/Magic Pack Fire files/aseprite/flame-loop.json",
+		"sheet": "res://assets/effects/2.Gothicvania Magic Pack N2 - Fire/Magic Pack Fire files/spritesheets/flame-loop.png",
+		"fallback": "res://assets/effects/2.Gothicvania Magic Pack N2 - Fire/Magic Pack Fire files/sprites/flame-loop",
 		"fps": 12.0,
+	},
+	"explosion_c": {
+		"json": "res://assets/effects/9.Warped Explosion Pack 5/Explosions Pack 5 Files/aseprite/explosion-c.json",
+		"sheet": "res://assets/effects/9.Warped Explosion Pack 5/Explosions Pack 5 Files/spritesheets/explosion-c.png",
+		"fallback": "res://assets/effects/9.Warped Explosion Pack 5/Explosions Pack 5 Files/sprites/explosion-c",
+		"fps": 14.0,
+		"max_frames": 15,
+	},
+	"laser_blast": {
+		"fallback": "res://assets/effects/custom/laser-blast/sprites",
+		"fps": 18.0,
+		"max_frames": 4,
 	},
 	"fire_pillar": {
 		"json": "res://assets/effects/2.Gothicvania Magic Pack N2 - Fire/Magic Pack Fire files/aseprite/fire.json",
@@ -90,13 +115,31 @@ const EFFECT_ATLAS := {
 		"fps": 14.0,
 		"max_frames": 5,
 	},
+	"enemy_shotgun_arrow": {
+		"json": "res://assets/effects/enemy_projectiles/aseprite/enemy_shotgun_arrow.json",
+		"sheet": "res://assets/effects/enemy_projectiles/spritesheets/enemy_shotgun_arrow.png",
+		"fallback": "res://assets/Characters/Characters(100x100)/Skeleton Archer/Arrow(projectile)",
+		"fps": 12.0,
+		"max_frames": 1,
+	},
+	"enemy_cross_magic": {
+		"json": "res://assets/effects/enemy_projectiles/aseprite/enemy_cross_magic.json",
+		"sheet": "res://assets/effects/enemy_projectiles/spritesheets/enemy_cross_magic.png",
+		"fallback": "res://assets/Characters/Characters(100x100)/Priest/Magic(projectile)",
+		"fps": 14.0,
+		"max_frames": 8,
+	},
+	"enemy_bounce_blob": {
+		"json": "res://assets/effects/3.Gothicvania Magic Pack N3/Magic Pack 3 files/aseprite/small-spark-3.json",
+		"sheet": "res://assets/effects/3.Gothicvania Magic Pack N3/Magic Pack 3 files/spritesheets/small-spark-3.png",
+		"fallback": "res://assets/effects/3.Gothicvania Magic Pack N3/Magic Pack 3 files/sprites/small-spark-3",
+		"fps": 12.0,
+	},
 }
 
 const PREVIEW_PATHS := {
 	"shuriken": "effects/3.Gothicvania Magic Pack N3/Magic Pack 3 files/sprites/spark",
-	"vine": "effects/4.GothicVania Magic Pack 4/Magic Pack 4 files/sprites/Cure/sprites",
 	"shield": "effects/5.GothicVania Magic Pack 5/Magic Pack 5 Files/sprites/flash/sprites",
-	"bat": "effects/6.GothicVania Magic Pack 6/Magic Pack 6/sprites/slash",
 	"heal": "effects/4.GothicVania Magic Pack 4/Magic Pack 4 files/sprites/Cure/sprites",
 	"clone": "effects/4.GothicVania Magic Pack 4/Magic Pack 4 files/sprites/wisp/sprites",
 	"thunder": "effects/1.Gothicvania Magic Pack N1/Magic Pack  files/thunder",
@@ -104,9 +147,7 @@ const PREVIEW_PATHS := {
 
 const SEARCH_ALIASES := {
 	"shuriken": ["spark", "shuriken", "slash"],
-	"vine": ["cure", "vine", "water"],
 	"shield": ["flash", "shield", "puff"],
-	"bat": ["slash", "bat", "electric"],
 	"heal": ["cure", "heal"],
 	"clone": ["wisp", "clone"],
 	"thunder": ["thunder", "thunde", "bolt"],
@@ -160,8 +201,8 @@ static func build_effect_frames(effect_key: String) -> SpriteFrames:
 		if cfg.has("fps"):
 			frames.set_animation_speed(ANIM_PREVIEW, float(cfg.fps))
 		frames.set_animation_loop(ANIM_PREVIEW, true)
+		_cache[cache_key] = frames
 
-	_cache[cache_key] = frames
 	return frames
 
 
@@ -619,9 +660,9 @@ static func _load_character_strip_frames(folder: String, prefix: String) -> Spri
 	var base_dir := "res://assets/Characters/Characters(100x100)/%s/%s" % [folder, prefix]
 	var mapping := {
 		SpriteHelper.ANIM_IDLE: ["%s-Idle.png" % prefix],
-		SpriteHelper.ANIM_WALK: ["%s-Walk.png" % prefix],
+		SpriteHelper.ANIM_WALK: ["%s-Walk.png" % prefix, "%s-Walk01.png" % prefix, "%s-Walk02.png" % prefix],
 		SpriteHelper.ANIM_ATTACK01: ["%s-Attack01.png" % prefix],
-		SpriteHelper.ANIM_ATTACK: ["%s-Attack02.png" % prefix, "%s-Attack3.png" % prefix],
+		SpriteHelper.ANIM_ATTACK: ["%s-Attack.png" % prefix, "%s-Attack02.png" % prefix, "%s-Attack03.png" % prefix, "%s-Attack3.png" % prefix],
 		SpriteHelper.ANIM_HURT: ["%s-Hurt.png" % prefix],
 		SpriteHelper.ANIM_DEATH: ["%s-Death.png" % prefix, "%s-DEATH.png" % prefix],
 	}

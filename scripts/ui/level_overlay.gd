@@ -8,6 +8,11 @@ var fail_intro: Dictionary = {}
 var show_complete := false
 
 var _intro_callback: Callable
+var _fail_retry_button: Button
+var _fail_back_button: Button
+var _fail_actions_box: HBoxContainer
+var _fail_on_retry: Callable
+var _fail_on_back: Callable
 
 
 func setup(battle_node) -> void:
@@ -18,6 +23,7 @@ func setup(battle_node) -> void:
 	var w := float(GameConfig.get_tuning("logical_width", 390))
 	var h := float(GameConfig.get_tuning("logical_height", 700))
 	size = Vector2(w, h)
+	_build_fail_action_buttons()
 
 
 func start_stage_intro(level_num: int, boss_name: String, on_complete: Callable) -> void:
@@ -48,20 +54,24 @@ func show_clear_flash(on_mid: Callable) -> void:
 	queue_redraw()
 
 
-func show_fail_intro(on_complete: Callable) -> void:
-	var label_dur := float(GameConfig.get_tuning("stage_fail_label_duration", 1.2))
+func show_fail_intro(on_retry: Callable, on_back: Callable, initial_overlay_alpha: float = -1.0) -> void:
+	var alpha := initial_overlay_alpha
+	if alpha < 0.0:
+		var dim_alpha := float(GameConfig.get_tuning("fail_death_dim_alpha", 0.55))
+		alpha = clampf(dim_alpha / 0.72, 0.0, 1.0)
 	fail_intro = {
-		"label_timer": label_dur,
-		"label_duration": label_dur,
-		"overlay_alpha": 0.0,
-		"on_complete": on_complete,
-		"complete_called": false,
+		"overlay_alpha": alpha,
+		"actions_shown": alpha >= 0.55,
 	}
+	_fail_on_retry = on_retry
+	_fail_on_back = on_back
+	_set_fail_actions_visible(alpha >= 0.55)
 	queue_redraw()
 
 
 func show_game_complete() -> void:
 	show_complete = true
+	_set_fail_actions_visible(false)
 	queue_redraw()
 
 
@@ -75,6 +85,7 @@ func reset_all() -> void:
 	clear_flash.clear()
 	fail_intro.clear()
 	show_complete = false
+	_set_fail_actions_visible(false)
 	queue_redraw()
 
 
@@ -136,20 +147,11 @@ func _update_clear_flash(delta: float) -> void:
 func _update_fail_intro(delta: float) -> void:
 	if fail_intro.is_empty():
 		return
-	if float(fail_intro.get("label_timer", 0.0)) > 0.0:
-		fail_intro["label_timer"] = float(fail_intro.get("label_timer", 0.0)) - delta
-		if float(fail_intro.get("label_timer", 0.0)) <= 0.0 and not bool(fail_intro.get("complete_called", false)):
-			fail_intro["complete_called"] = true
-			var cb: Callable = fail_intro.get("on_complete", Callable())
-			if cb.is_valid():
-				cb.call()
-			if fail_intro.is_empty():
-				return
-		return
 	var fade_dur := maxf(0.001, float(GameConfig.get_tuning("stage_fail_overlay_fade", 0.65)))
 	fail_intro["overlay_alpha"] = minf(1.0, float(fail_intro.get("overlay_alpha", 0.0)) + delta / fade_dur)
-	if float(fail_intro.get("overlay_alpha", 0.0)) >= 1.0:
-		fail_intro.clear()
+	if float(fail_intro.get("overlay_alpha", 0.0)) >= 0.55 and not bool(fail_intro.get("actions_shown", false)):
+		fail_intro["actions_shown"] = true
+		_set_fail_actions_visible(true)
 
 
 func _draw() -> void:
@@ -194,20 +196,12 @@ func _draw_clear_flash(cx: float, cy: float) -> void:
 
 func _draw_fail_overlay(w: float, h: float) -> void:
 	var overlay_a := float(fail_intro.get("overlay_alpha", 0.0))
-	var label_a := 0.0
-	if float(fail_intro.get("label_timer", 0.0)) > 0.0:
-		label_a = clampf(
-			float(fail_intro.get("label_timer", 0.0)) / float(fail_intro.get("label_duration", 1.0)),
-			0.0, 1.0
-		)
-	if overlay_a > 0.0:
-		draw_rect(Rect2(Vector2.ZERO, Vector2(w, h)), Color(0, 0, 0, 0.72 * overlay_a))
-	if label_a > 0.0:
-		_draw_pixel_text("挑战失败", Vector2(w * 0.5, h * 0.22), 24, Color("#8a2820"), label_a)
-	if overlay_a > 0.35:
-		var msg_a := clampf((overlay_a - 0.35) / 0.65, 0.0, 1.0)
-		_draw_pixel_text("体力耗尽", Vector2(w * 0.5, h * 0.44), 20, Color("#ff9c84"), msg_a)
-		_draw_pixel_text("点击屏幕重新挑战", Vector2(w * 0.5, h * 0.44 + 28.0), 13, Color("#f4e8da"), msg_a)
+	if overlay_a <= 0.0:
+		return
+	draw_rect(Rect2(Vector2.ZERO, Vector2(w, h)), Color(0, 0, 0, 0.72 * overlay_a))
+	var msg_a := clampf(overlay_a / 0.65, 0.0, 1.0)
+	_draw_pixel_text("体力耗尽", Vector2(w * 0.5, h * 0.44), 20, Color("#ff9c84"), msg_a)
+	_draw_pixel_text("请选择操作", Vector2(w * 0.5, h * 0.44 + 28.0), 13, Color("#f4e8da"), msg_a)
 
 
 func _draw_complete(w: float, h: float) -> void:
@@ -221,3 +215,59 @@ func _draw_pixel_text(text: String, pos: Vector2, font_size: int, color: Color, 
 	var c := color
 	c.a *= alpha
 	draw_string(font, pos - Vector2(font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size).x * 0.5, font_size * 0.35), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, c)
+
+
+func _build_fail_action_buttons() -> void:
+	if _fail_actions_box != null:
+		return
+	_fail_actions_box = HBoxContainer.new()
+	_fail_actions_box.visible = false
+	_fail_actions_box.mouse_filter = Control.MOUSE_FILTER_STOP
+	_fail_actions_box.anchor_left = 0.5
+	_fail_actions_box.anchor_right = 0.5
+	_fail_actions_box.anchor_top = 0.66
+	_fail_actions_box.anchor_bottom = 0.66
+	_fail_actions_box.offset_left = -150.0
+	_fail_actions_box.offset_right = 150.0
+	_fail_actions_box.offset_top = 0.0
+	_fail_actions_box.offset_bottom = 44.0
+	_fail_actions_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	_fail_actions_box.add_theme_constant_override("separation", 10)
+	add_child(_fail_actions_box)
+
+	_fail_retry_button = Button.new()
+	_fail_retry_button.text = "重来"
+	_fail_retry_button.custom_minimum_size = Vector2(130, 42)
+	_fail_retry_button.pressed.connect(_on_fail_retry_pressed)
+	_fail_actions_box.add_child(_fail_retry_button)
+
+	_fail_back_button = Button.new()
+	_fail_back_button.text = "回到主界面"
+	_fail_back_button.custom_minimum_size = Vector2(130, 42)
+	_fail_back_button.pressed.connect(_on_fail_back_pressed)
+	_fail_actions_box.add_child(_fail_back_button)
+
+	PixelUiHelper.apply_ui_font_tree(_fail_actions_box)
+
+
+func _set_fail_actions_visible(visible: bool) -> void:
+	if _fail_actions_box == null:
+		return
+	_fail_actions_box.visible = visible
+	mouse_filter = Control.MOUSE_FILTER_STOP if visible else Control.MOUSE_FILTER_IGNORE
+
+
+func has_active_fail_actions() -> bool:
+	return _fail_actions_box != null and _fail_actions_box.visible
+
+
+func _on_fail_retry_pressed() -> void:
+	_set_fail_actions_visible(false)
+	if _fail_on_retry.is_valid():
+		_fail_on_retry.call()
+
+
+func _on_fail_back_pressed() -> void:
+	_set_fail_actions_visible(false)
+	if _fail_on_back.is_valid():
+		_fail_on_back.call()

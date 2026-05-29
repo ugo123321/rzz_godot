@@ -4,6 +4,11 @@ class_name GameHud
 const PixelUi := preload("res://scripts/utils/pixel_ui_helper.gd")
 const UiSprites := preload("res://scripts/utils/ui_sprite_helper.gd")
 
+const PAUSE_BTN_SIZE := 18.0
+const PAUSE_BTN_MARGIN := 12.0
+const PAUSE_BTN_TOP := 6.0
+const PAUSE_BTN_PRESSED_SCALE := 0.88
+
 var _stage_text := "第1关"
 var _exp_level := 1
 var _exp_value := 0
@@ -12,8 +17,11 @@ var _message_text := ""
 var _message_timer := 0.0
 var _message_persistent := false
 var _pause_btn: TextureButton
+var _pause_btn_pressed := false
 var _last_ki_draw := -1.0
 var _redraw_timer := 0.0
+var _gold := 0
+var _coin_icon: Texture2D
 
 
 func _ready() -> void:
@@ -21,8 +29,11 @@ func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	z_index = 20
 	EventBus.exp_changed.connect(_on_exp_changed)
+	EventBus.gold_changed.connect(_on_gold_changed)
 	EventBus.player_damaged.connect(_on_player_damaged)
 	EventBus.player_healed.connect(_on_player_healed)
+	_load_coin_icon()
+	_sync_gold_from_lobby()
 	_build_pause_button()
 	call_deferred("_sync_exp_from_battle")
 
@@ -30,20 +41,25 @@ func _ready() -> void:
 func _build_pause_button() -> void:
 	_pause_btn = TextureButton.new()
 	_pause_btn.name = "PauseButton"
-	_pause_btn.custom_minimum_size = Vector2(36, 36)
+	var btn_size := Vector2(PAUSE_BTN_SIZE, PAUSE_BTN_SIZE)
+	_pause_btn.custom_minimum_size = btn_size
+	_pause_btn.size = btn_size
+	_pause_btn.pivot_offset = btn_size * 0.5
 	_pause_btn.anchor_left = 1.0
 	_pause_btn.anchor_top = 0.0
 	_pause_btn.anchor_right = 1.0
 	_pause_btn.anchor_bottom = 0.0
-	_pause_btn.offset_left = -48.0
-	_pause_btn.offset_top = 38.0
-	_pause_btn.offset_right = -12.0
-	_pause_btn.offset_bottom = 74.0
+	_pause_btn.offset_left = -PAUSE_BTN_MARGIN - PAUSE_BTN_SIZE
+	_pause_btn.offset_top = PAUSE_BTN_TOP
+	_pause_btn.offset_right = -PAUSE_BTN_MARGIN
+	_pause_btn.offset_bottom = PAUSE_BTN_TOP + PAUSE_BTN_SIZE
 	_pause_btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	_pause_btn.z_index = 50
 	_pause_btn.focus_mode = Control.FOCUS_NONE
 	UiSprites.style_pause_button(_pause_btn)
 	_pause_btn.visible = false
+	_pause_btn.button_down.connect(_on_pause_button_down)
+	_pause_btn.button_up.connect(_on_pause_button_up)
 	_pause_btn.pressed.connect(_on_pause_pressed)
 	add_child(_pause_btn)
 
@@ -54,10 +70,43 @@ func _sync_exp_from_battle() -> void:
 		_on_exp_changed(battle.experience.level, battle.experience.exp, battle.experience.exp_to_next)
 
 
+func _load_coin_icon() -> void:
+	var path := "res://assets/icons/equipment/icon_coin_pixel.svg"
+	if ResourceLoader.exists(path):
+		_coin_icon = load(path) as Texture2D
+
+
+func _sync_gold_from_lobby() -> void:
+	if LobbyState:
+		_gold = int(LobbyState.gold)
+		queue_redraw()
+
+
 func is_pause_button_at(screen_pos: Vector2) -> bool:
 	if _pause_btn == null or not _pause_btn.visible:
 		return false
 	return _pause_btn.get_global_rect().has_point(screen_pos)
+
+
+func _on_pause_button_down() -> void:
+	_pause_btn_pressed = true
+	_update_pause_button_scale()
+
+
+func _on_pause_button_up() -> void:
+	_pause_btn_pressed = false
+	_update_pause_button_scale()
+
+
+func _update_pause_button_scale() -> void:
+	if _pause_btn == null:
+		return
+	var scale := PAUSE_BTN_PRESSED_SCALE if _pause_btn_pressed else 1.0
+	_pause_btn.scale = Vector2.ONE * scale
+	if _pause_btn_pressed:
+		_pause_btn.modulate = Color(0.92, 0.92, 0.96)
+	else:
+		_pause_btn.modulate = Color.WHITE
 
 
 func _on_pause_pressed() -> void:
@@ -111,7 +160,7 @@ func _process(delta: float) -> void:
 		if ki_snap != _last_ki_draw:
 			_last_ki_draw = ki_snap
 			need_redraw = true
-		if battle.player.combo_display_timer > 0.0:
+		if battle.player.is_combo_display_visible():
 			need_redraw = true
 		if battle.player.is_ki_full():
 			need_redraw = true
@@ -125,9 +174,11 @@ func _draw() -> void:
 	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
 		viewport_size = get_viewport_rect().size
 
+	_draw_gold_widget()
+
 	var battle := get_tree().get_first_node_in_group("battle")
 	var player: BattlePlayer = battle.player if battle else null
-	var boss: CentipedeBoss = null
+	var boss: Node = null
 	if battle and battle.spawner:
 		boss = battle.spawner.boss
 
@@ -178,10 +229,30 @@ func _draw() -> void:
 	UiSprites.draw_exp_bar(self, viewport_size, _exp_level, _exp_value, _exp_to_next)
 
 
+func _draw_gold_widget() -> void:
+	var icon_rect := Rect2(12.0, 10.0, 18.0, 18.0)
+	if _coin_icon != null:
+		draw_texture_rect(_coin_icon, icon_rect, false)
+	PixelUi.draw_pixel_text(
+		self,
+		str(_gold),
+		Vector2(34.0, 19.0),
+		10,
+		Color("#ffe090"),
+		HORIZONTAL_ALIGNMENT_LEFT,
+		VERTICAL_ALIGNMENT_CENTER
+	)
+
+
 func _on_exp_changed(level: int, exp_value: int, exp_to_next: int) -> void:
 	_exp_level = level
 	_exp_value = exp_value
 	_exp_to_next = exp_to_next
+	queue_redraw()
+
+
+func _on_gold_changed(total_gold: int) -> void:
+	_gold = total_gold
 	queue_redraw()
 
 

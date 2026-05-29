@@ -17,6 +17,12 @@ var ranged := false
 var attack_range := 0.0
 var arrow_speed := 85.0
 var ki_drain_on_hit := 0
+var attack_pattern := ""
+var projectile_effect := ""
+var spread_count := 5
+var spread_angle_deg := 50.0
+var bounce_count := 1
+var sprite_tint := Color.WHITE
 var has_shield := false
 var facing := 1.0
 var color := Color.WHITE
@@ -28,7 +34,6 @@ var stage_index_cached := 0
 var frozen_timer := 0.0
 var vulnerable_mark := false
 var path_target_hit_count := 0
-var fail_throw_timer := 0.0
 var dying := false
 var death_delay := 0.0
 var death_timer := 0.0
@@ -36,6 +41,9 @@ var death_fade_dur := 0.28
 var death_flash := 0.0
 var _death_base_scale := Vector2.ONE
 var hurt_reaction_timer := 0.0
+var burn_timer := 0.0
+var burn_tick_timer := 0.0
+var burn_dps := 0
 
 var _sprite_folder := "Skeleton"
 var _sprite_prefix := "Skeleton"
@@ -61,6 +69,16 @@ func setup(monster_kind: String, stage_index: int, spawn_pos: Vector2) -> void:
 	attack_range = float(stats.get("attack_range", 0))
 	arrow_speed = float(stats.get("arrow_speed", 85.0))
 	ki_drain_on_hit = int(stats.get("ki_drain_on_hit", 0))
+	attack_pattern = str(stats.get("attack_pattern", ""))
+	projectile_effect = str(stats.get("projectile_effect", ""))
+	spread_count = int(stats.get("spread_count", 5))
+	spread_angle_deg = float(stats.get("spread_angle_deg", 50.0))
+	bounce_count = int(stats.get("bounce_count", 1))
+	var tint_hex := str(stats.get("sprite_tint_hex", ""))
+	if not tint_hex.is_empty():
+		sprite_tint = Color(tint_hex)
+	else:
+		sprite_tint = Color.WHITE
 	has_shield = kind_id == "SHIELD"
 	max_split_tier = int(stats.get("max_split_tier", 0))
 	split_count = int(stats.get("split_count", 0))
@@ -99,6 +117,8 @@ func _apply_sprite() -> void:
 	SpriteHelper.apply_pixel_art(anim_sprite)
 	var scale_val := float(GameConfig.get_tuning("monster_sprite_scale", 1.0))
 	anim_sprite.scale = Vector2.ONE * SpriteHelper.pixel_scale(scale_val)
+	if sprite_tint != Color.WHITE:
+		anim_sprite.modulate = sprite_tint
 	if anim_sprite.sprite_frames.has_animation(SpriteHelper.ANIM_IDLE):
 		anim_sprite.play(SpriteHelper.ANIM_IDLE)
 	if not anim_sprite.animation_finished.is_connected(_on_animation_finished):
@@ -204,6 +224,14 @@ func take_damage(raw_damage: int, from_pos: Vector2) -> Dictionary:
 	return {"damage": actual, "is_crit": false, "started_dying": started_dying}
 
 
+func apply_burn_dot(duration: float, dps: int) -> void:
+	if not alive or dying:
+		return
+	burn_timer = maxf(burn_timer, duration)
+	burn_tick_timer = 0.0
+	burn_dps = maxi(burn_dps, dps)
+
+
 func can_split() -> bool:
 	return kind_id == "SPLITTER" and split_tier < max_split_tier and not spawned_children
 
@@ -248,6 +276,7 @@ func _finish_death() -> void:
 func update_ai(delta: float, player: BattlePlayer, battle: Node) -> void:
 	if not alive or dying or player == null:
 		return
+	_update_burn_dot(delta)
 	if spawn_lock_timer > 0.0:
 		spawn_lock_timer = maxf(0.0, spawn_lock_timer - delta)
 		return
@@ -264,7 +293,9 @@ func update_ai(delta: float, player: BattlePlayer, battle: Node) -> void:
 	var preserve_anim := hurt_reaction_timer > 0.0 or SpriteHelper.is_playing_priority_anim(anim_sprite)
 	if can_move:
 		var dist := to_player.length()
-		var stop_dist := 26.0 if not ranged else attack_range * 0.85
+		var stop_dist := 26.0
+		if ranged:
+			stop_dist = attack_range * 0.85 if attack_range > 0.0 else 140.0
 		if dist > stop_dist:
 			global_position += to_player.normalized() * move_speed * delta
 			if not preserve_anim:
@@ -278,7 +309,7 @@ func update_ai(delta: float, player: BattlePlayer, battle: Node) -> void:
 		attack_timer -= delta
 		if attack_timer > 0.0:
 			return
-		if to_player.length() > attack_range and ranged:
+		if ranged and attack_range > 0.0 and to_player.length() > attack_range:
 			return
 		if to_player.length() > 30.0 and not ranged:
 			return
@@ -296,7 +327,46 @@ func _perform_attack(player: BattlePlayer, battle: Node) -> void:
 			battle.particles.emit_particle(hand.x, hand.y - 4.0, 0, -20, 0.35, 4.0, Color("#ff5040"), 0, false, false)
 		return
 	if ranged:
-		battle.spawn_arrow(global_position, player.global_position, attack, arrow_speed)
+		_play_anim(SpriteHelper.ANIM_ATTACK)
+		match attack_pattern:
+			"spread":
+				battle.spawn_enemy_spread(
+					global_position,
+					player.global_position,
+					attack,
+					arrow_speed,
+					spread_count,
+					spread_angle_deg,
+					projectile_effect,
+					sprite_tint
+				)
+			"cross":
+				battle.spawn_enemy_cross(
+					global_position,
+					attack,
+					arrow_speed,
+					projectile_effect,
+					sprite_tint
+				)
+			"bounce":
+				battle.spawn_enemy_bounce(
+					global_position,
+					player.global_position,
+					attack,
+					arrow_speed,
+					bounce_count,
+					projectile_effect,
+					sprite_tint
+				)
+			_:
+				battle.spawn_arrow(
+					global_position,
+					player.global_position,
+					attack,
+					arrow_speed,
+					projectile_effect,
+					sprite_tint
+				)
 	else:
 		_play_anim(SpriteHelper.ANIM_ATTACK)
 		player.take_damage(attack)
@@ -370,16 +440,32 @@ func _should_show_hp_bar() -> bool:
 
 func _draw_hp_bar() -> void:
 	var head_pos := to_local(get_head_top_global_position())
-	PixelUiHelper.draw_compact_hp_bar(self, head_pos + Vector2(0.0, 5.0), hp, max_hp)
+	PixelUiHelper.draw_compact_hp_bar(
+		self,
+		head_pos + Vector2(0.0, 5.0),
+		hp,
+		max_hp,
+		28.0,
+		5.0,
+		{
+			"border_color": "#2a1317",
+			"panel_fill": "#201016",
+			"empty_a": "#34161c",
+			"empty_b": "#281218",
+			"fill_color": "#cc4040",
+			"shine_color": "#ff9494",
+			"segment_count": 8,
+			"segment_gap": 1
+		}
+	)
 
 
 func _draw() -> void:
-	if fail_throw_timer > 0.0:
-		var battle := get_tree().get_first_node_in_group("battle")
-		if battle and battle.fail_animator and battle.fail_animator.is_throwing() and battle.player:
-			StageFailAnimator.draw_monster_throw_spear(self, self, battle.player.global_position)
 	if _should_show_hp_bar():
 		_draw_hp_bar()
+	if burn_timer > 0.0:
+		var t := 0.65 + 0.35 * sin(Time.get_ticks_msec() * 0.018)
+		draw_arc(Vector2.ZERO, hitbox_radius + 7.0, 0.0, TAU, 30, Color(1.0, 0.35, 0.2, 0.55 + 0.25 * t), 2.0)
 	if not alive or dying or path_target_hit_count <= 0:
 		return
 	var ring := CombatDirector.path_preview_ring_color(path_target_hit_count)
@@ -388,3 +474,41 @@ func _draw() -> void:
 	var r := hitbox_radius + 5.0
 	draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, ring, 3.0)
 	draw_circle(Vector2.ZERO, r * 0.55, fill)
+
+
+func _update_burn_dot(delta: float) -> void:
+	if burn_timer <= 0.0:
+		burn_timer = 0.0
+		burn_tick_timer = 0.0
+		burn_dps = 0
+		_restore_sprite_tint()
+		return
+	_apply_burn_tint()
+	burn_timer = maxf(0.0, burn_timer - delta)
+	burn_tick_timer += delta
+	var battle := get_tree().get_first_node_in_group("battle")
+	while burn_tick_timer >= 0.5 and burn_timer > 0.0 and burn_dps > 0 and alive and not dying:
+		burn_tick_timer -= 0.5
+		var tick_damage := int(max(1, round(float(burn_dps) * 0.5)))
+		var result := take_damage(tick_damage, global_position + Vector2(0.0, -8.0))
+		if battle and battle.combat and int(result.get("damage", 0)) > 0:
+			battle.combat.spawn_damage_number(global_position + Vector2(0.0, -8.0), int(result.get("damage", 0)), false, false, Color("#ff6a3a"))
+		if bool(result.get("started_dying", false)):
+			EventBus.monster_killed.emit(self)
+
+
+func _apply_burn_tint() -> void:
+	var anim_sprite := _get_sprite()
+	if anim_sprite == null:
+		return
+	if sprite_tint != Color.WHITE:
+		anim_sprite.modulate = sprite_tint.lerp(Color(1.0, 0.45, 0.38, 1.0), 0.42)
+	else:
+		anim_sprite.modulate = Color(1.0, 0.42, 0.36, 1.0)
+
+
+func _restore_sprite_tint() -> void:
+	var anim_sprite := _get_sprite()
+	if anim_sprite == null:
+		return
+	anim_sprite.modulate = sprite_tint if sprite_tint != Color.WHITE else Color.WHITE

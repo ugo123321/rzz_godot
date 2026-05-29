@@ -1,7 +1,7 @@
 [
   {
     "key": "base_attack",
-    "value": 95,
+    "value": 40,
     "description": "基础攻击力"
   },
   {
@@ -30,6 +30,11 @@
     "description": "路径冲刺速度 px/s"
   },
   {
+    "key": "move_speed",
+    "value": 120,
+    "description": "摇杆移动速度 px/s"
+  },
+  {
     "key": "hitbox_radius",
     "value": 12,
     "description": "碰撞半径"
@@ -55,9 +60,14 @@
     "description": "划线每像素消耗气力"
   },
   {
-    "key": "ki_regen_rate",
-    "value": 135,
-    "description": "气力恢复速度/s"
+    "key": "basic_attack_speed",
+    "value": 2,
+    "description": "普攻攻速(次/秒，决定普攻子弹频率)"
+  },
+  {
+    "key": "ki_regen_speed",
+    "value": 60,
+    "description": "气力回复速度(点/秒)"
   },
   {
     "key": "combo_damage_bonus",
@@ -70,24 +80,19 @@
     "description": "受击无敌时间"
   },
   {
-    "key": "auto_dart_interval",
+    "key": "auto_bullet_damage_mult",
     "value": 0.5,
-    "description": "自动火球间隔"
+    "description": "普攻子弹伤害倍率"
   },
   {
-    "key": "auto_dart_damage_mult",
-    "value": 0.2,
-    "description": "自动火球伤害倍率"
-  },
-  {
-    "key": "auto_dart_speed",
+    "key": "auto_bullet_speed",
     "value": 420,
-    "description": "自动火球速度"
+    "description": "普攻子弹速度"
   },
   {
-    "key": "auto_dart_life",
+    "key": "auto_bullet_life",
     "value": 0.9,
-    "description": "自动火球存活时间"
+    "description": "普攻子弹存活时间"
   },
   {
     "key": "character_folder",
@@ -103,5 +108,10 @@
     "key": "sprite_scale",
     "value": 2,
     "description": "显示缩放(100px素材，2=200px显示)"
+  },
+  {
+    "key": "auto_bullet_pierce_range_mul",
+    "value": 0.85,
+    "description": "穿透子弹攻击距离倍率(相对 speed×life)"
   }
 ]

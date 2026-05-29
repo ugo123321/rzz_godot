@@ -89,3 +89,131 @@ static func pick_random(arr: Array):
 	if arr.is_empty():
 		return null
 	return arr[randi() % arr.size()]
+
+
+static func segment_intersection(a: Vector2, b: Vector2, c: Vector2, d: Vector2) -> Variant:
+	var ab := b - a
+	var cd := d - c
+	var denom := ab.x * cd.y - ab.y * cd.x
+	if absf(denom) < 0.0001:
+		return null
+	var ac := c - a
+	var t := (ac.x * cd.y - ac.y * cd.x) / denom
+	var u := (ac.x * ab.y - ac.y * ab.x) / denom
+	if t <= 0.001 or t >= 0.999 or u <= 0.001 or u >= 0.999:
+		return null
+	return a + ab * t
+
+
+static func _polygon_area(points: Array) -> float:
+	if points.size() < 3:
+		return 0.0
+	var area := 0.0
+	var n := points.size()
+	for i in range(n):
+		var a: Vector2 = points[i]
+		var b: Vector2 = points[(i + 1) % n]
+		area += a.x * b.y - b.x * a.y
+	return abs(area) * 0.5
+
+
+static func path_extract_closed_loop(path: Array, close_dist: float = 36.0, min_points: int = 5, min_area: float = 800.0) -> Array:
+	var loops := path_extract_all_closed_loops(path, close_dist, min_points, min_area)
+	if loops.is_empty():
+		return []
+	return loops[0]
+
+
+static func path_extract_all_closed_loops(path: Array, close_dist: float = 36.0, min_points: int = 5, min_area: float = 800.0) -> Array:
+	var loops: Array = []
+	if path.size() < min_points:
+		return loops
+	var start: Vector2 = path[0]
+	var end: Vector2 = path[path.size() - 1]
+	if start.distance_to(end) <= close_dist:
+		var loop: Array = []
+		for p in path:
+			loop.append(Vector2(p))
+		if _polygon_area(loop) >= min_area:
+			loops.append(loop)
+			return loops
+	for i in range(path.size() - 1):
+		var a: Vector2 = path[i]
+		var b: Vector2 = path[i + 1]
+		for j in range(i + 2, path.size() - 1):
+			var c: Vector2 = path[j]
+			var d: Vector2 = path[j + 1]
+			var hit = segment_intersection(a, b, c, d)
+			if hit == null:
+				continue
+			var loop_pts: Array = [Vector2(hit)]
+			for k in range(i + 1, j + 1):
+				loop_pts.append(Vector2(path[k]))
+			if _polygon_area(loop_pts) >= min_area:
+				loops.append(loop_pts)
+	return _dedupe_loops(loops)
+
+
+static func _dedupe_loops(loops: Array) -> Array:
+	var result: Array = []
+	for loop in loops:
+		var center := polygon_centroid(loop)
+		var area := _polygon_area(loop)
+		var duplicate := false
+		for existing in result:
+			var ex_center := polygon_centroid(existing)
+			var ex_area := _polygon_area(existing)
+			if ex_center.distance_to(center) < 32.0 and absf(ex_area - area) < maxf(ex_area, area) * 0.15:
+				duplicate = true
+				break
+		if not duplicate:
+			result.append(loop)
+	return result
+
+
+static func path_forms_closed_loop(path: Array, close_dist: float = 36.0, min_points: int = 5, min_area: float = 800.0) -> bool:
+	return not path_extract_closed_loop(path, close_dist, min_points, min_area).is_empty()
+
+
+static func points_centroid(points: Array) -> Vector2:
+	if points.is_empty():
+		return Vector2.ZERO
+	var sum := Vector2.ZERO
+	for p in points:
+		sum += Vector2(p)
+	return sum / float(points.size())
+
+
+static func polygon_centroid(points: Array) -> Vector2:
+	if points.size() < 3:
+		return points_centroid(points)
+	var area := 0.0
+	var cx := 0.0
+	var cy := 0.0
+	var n := points.size()
+	for i in range(n):
+		var a: Vector2 = points[i]
+		var b: Vector2 = points[(i + 1) % n]
+		var cross := a.x * b.y - b.x * a.y
+		area += cross
+		cx += (a.x + b.x) * cross
+		cy += (a.y + b.y) * cross
+	area *= 0.5
+	if absf(area) < 0.001:
+		return points_centroid(points)
+	var inv := 1.0 / (6.0 * area)
+	return Vector2(cx * inv, cy * inv)
+
+
+static func path_loop_centroid(path: Array) -> Vector2:
+	var loop := path_extract_closed_loop(path)
+	if loop.is_empty():
+		return points_centroid(path)
+	return polygon_centroid(loop)
+
+
+static func path_loop_radius(path: Array, center: Vector2) -> float:
+	var max_r := 0.0
+	for p in path:
+		max_r = maxf(max_r, center.distance_to(Vector2(p)))
+	return maxf(24.0, max_r)

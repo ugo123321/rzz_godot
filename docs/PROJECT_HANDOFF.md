@@ -175,18 +175,21 @@ python D:\workspace\godot1\renzhezhan\tools\export_config.py --init-excel
 
 ---
 
-## 4.4 特效素材路径（`effect_helper.gd` → `PREVIEW_PATHS`）
+## 4.4 特效素材路径
+
+**完整说明见 [`docs/EFFECTS.md`](EFFECTS.md)**（注册、绘制模式、替换/新增 Checklist）。
 
 | key | sucai 路径（相对 `assets/`） |
 |-----|------------------------------|
 | tornado（水龙卷） | `effects/13.Gothicvania Magic Pack 8/Magic Pack 8 files/sprites/water` |
+| black_hole（黑洞） | `effects/10.GothicVania Magic Pack 7/Magic Pack 7 files/sprites/vfx-d`（Aseprite json + 前 9 帧） |
 | fireball | `effects/5.../fireball/sprites` |
 | fire_pillar | `effects/2.../sprites/fire` |
-| dart / lightning / … | 见 `effect_helper.gd` 内 `PREVIEW_PATHS` |
+| dart / lightning / … | 见 `effect_helper.gd` 内 `EFFECT_ATLAS` 与 `PREVIEW_PATHS` |
 
 **换特效后仍显示旧图**：调试控制台执行 `EffectHelper.clear_cache()`，或重启 Godot（`static var _cache`）。
 
-`upgrades.json` 中 `water_tornado` 的 `effect_pack` 已指向 Pack 8；重导 Excel 时勿改回 Pack 7。
+`upgrades.json` 中 `water_tornado` 的 `effect_pack` 已指向 Pack 8；`black_hole` 指向 Pack 7 vfx-d。重导 Excel 时以 `tools/export_config.py` 为准。
 
 ---
 

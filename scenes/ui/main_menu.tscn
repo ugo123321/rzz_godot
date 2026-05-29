@@ -1,0 +1,519 @@
+[gd_scene format=3 uid="uid://mainmenu001"]
+
+[ext_resource type="Script" uid="uid://bm3sw56t7hldi" path="res://scripts/ui/main_menu.gd" id="1"]
+[ext_resource type="Script" uid="uid://d01uyh7ncexiv" path="res://scripts/ui/equipment_panel.gd" id="2"]
+[ext_resource type="Texture2D" uid="uid://1n3ldxyyajdm" path="res://scenes/ui/Wox grass fill.png" id="2_1g8jr"]
+
+[node name="MainMenu" type="Control" unique_id=230988136]
+custom_minimum_size = Vector2(390, 700)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="BackgroundFallback" type="ColorRect" parent="." unique_id=204084407]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.18615606, 0.26366782, 0.4414407, 1)
+
+[node name="Background" type="TextureRect" parent="." unique_id=1255794703]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_1g8jr")
+expand_mode = 1
+stretch_mode = 2
+
+[node name="Content" type="MarginContainer" parent="." unique_id=1976002474]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_bottom = -88.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 8
+
+[node name="GachaPanel" type="CenterContainer" parent="Content" unique_id=367837152]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Placeholder" type="Label" parent="Content/GachaPanel" unique_id=524451780]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "抽奖功能
+敬请期待"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="EquipmentPanel" type="CenterContainer" parent="Content" unique_id=265035585]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("2")
+
+[node name="Placeholder" type="Label" parent="Content/EquipmentPanel" unique_id=1285982816]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "装备系统
+敬请期待"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="StagePanel" type="VBoxContainer" parent="Content" unique_id=152748131]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="ChapterName" type="Label" parent="Content/StagePanel" unique_id=729538341]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "第一章"
+horizontal_alignment = 1
+
+[node name="ChapterDesc" type="Label" parent="Content/StagePanel" unique_id=1169332738]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.78, 0.85, 1)
+theme_override_font_sizes/font_size = 14
+text = "入门章节"
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="StageViewport" type="Control" parent="Content/StagePanel" unique_id=2137268502]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 360)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SkyGlow" type="TextureRect" parent="Content/StagePanel/StageViewport" unique_id=2037169411]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -148.0
+offset_top = -188.0
+offset_right = 148.0
+offset_bottom = 68.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 4
+
+[node name="GroundStrip" type="TextureRect" parent="Content/StagePanel/StageViewport" unique_id=2015096238]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -146.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="StageIconPivot" type="Control" parent="Content/StagePanel/StageViewport" unique_id=39341426]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -98.0
+offset_right = 150.0
+offset_bottom = 202.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="StageIcon" type="TextureRect" parent="Content/StagePanel/StageViewport/StageIconPivot" unique_id=126794481]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 4
+
+[node name="ChapterPrev" type="TextureButton" parent="Content/StagePanel/StageViewport" unique_id=1147793490]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 8.0
+offset_top = -22.0
+offset_right = 52.0
+offset_bottom = 22.0
+grow_vertical = 2
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="ChapterNext" type="TextureButton" parent="Content/StagePanel/StageViewport" unique_id=1630273449]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -52.0
+offset_top = -22.0
+offset_right = -8.0
+offset_bottom = 22.0
+grow_horizontal = 0
+grow_vertical = 2
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="StartButtonWrap" type="MarginContainer" parent="Content/StagePanel" unique_id=1442269505]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/margin_top = -100
+
+[node name="StartButton" type="TextureButton" parent="Content/StagePanel/StartButtonWrap" unique_id=1743837995]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(163, 48)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="StartLabel" type="Label" parent="Content/StagePanel/StartButtonWrap/StartButton" unique_id=1934391349]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = -1.0
+offset_right = -6.0
+offset_bottom = -5.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_shadow_color = Color(0.18, 0.1, 0.02, 0.35)
+theme_override_colors/font_outline_color = Color(0.22, 0.16, 0.08, 0.55)
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/outline_size = 2
+theme_override_font_sizes/font_size = 16
+text = "开始冒险"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DungeonPanel" type="CenterContainer" parent="Content" unique_id=7959425]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Placeholder" type="Label" parent="Content/DungeonPanel" unique_id=1000496047]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "副本系统
+敬请期待"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="AchievementPanel" type="CenterContainer" parent="Content" unique_id=850228246]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Placeholder" type="Label" parent="Content/AchievementPanel" unique_id=873881728]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "成就系统
+敬请期待"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BottomBar" type="Control" parent="." unique_id=372677655]
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -96.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="BottomBg" type="TextureRect" parent="BottomBar" unique_id=157895616]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="TabRail" type="TextureRect" parent="BottomBar" unique_id=1244263719]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -162.0
+offset_top = -28.0
+offset_right = 162.0
+offset_bottom = 30.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 4
+
+[node name="TabFocus" type="TextureRect" parent="BottomBar" unique_id=1538070715]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_right = 64.0
+offset_bottom = 64.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 4
+
+[node name="TabRow" type="HBoxContainer" parent="BottomBar" unique_id=797367881]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="TabGacha" type="TextureButton" parent="BottomBar/TabRow" unique_id=27337258]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 78)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Icon" type="TextureRect" parent="BottomBar/TabRow/TabGacha" unique_id=368372379]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -15.0
+offset_top = -31.0
+offset_right = 15.0
+offset_bottom = -1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TabLabel" type="Label" parent="BottomBar/TabRow/TabGacha" unique_id=1553030975]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -26.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 12
+text = "抽奖"
+horizontal_alignment = 1
+
+[node name="TabEquipment" type="TextureButton" parent="BottomBar/TabRow" unique_id=1345801330]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 78)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Icon" type="TextureRect" parent="BottomBar/TabRow/TabEquipment" unique_id=672278965]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -15.0
+offset_top = -31.0
+offset_right = 15.0
+offset_bottom = -1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TabLabel" type="Label" parent="BottomBar/TabRow/TabEquipment" unique_id=199023418]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -26.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 12
+text = "装备"
+horizontal_alignment = 1
+
+[node name="TabStage" type="TextureButton" parent="BottomBar/TabRow" unique_id=1203776899]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 78)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Icon" type="TextureRect" parent="BottomBar/TabRow/TabStage" unique_id=497219344]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -15.0
+offset_top = -31.0
+offset_right = 15.0
+offset_bottom = -1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TabLabel" type="Label" parent="BottomBar/TabRow/TabStage" unique_id=1029593369]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -26.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 12
+text = "关卡"
+horizontal_alignment = 1
+
+[node name="TabDungeon" type="TextureButton" parent="BottomBar/TabRow" unique_id=650931740]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 78)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Icon" type="TextureRect" parent="BottomBar/TabRow/TabDungeon" unique_id=1504809961]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -15.0
+offset_top = -31.0
+offset_right = 15.0
+offset_bottom = -1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TabLabel" type="Label" parent="BottomBar/TabRow/TabDungeon" unique_id=1777613468]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -26.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 12
+text = "副本"
+horizontal_alignment = 1
+
+[node name="TabAchievement" type="TextureButton" parent="BottomBar/TabRow" unique_id=594465094]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(64, 78)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+ignore_texture_size = true
+stretch_mode = 5
+
+[node name="Icon" type="TextureRect" parent="BottomBar/TabRow/TabAchievement" unique_id=1760647425]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -15.0
+offset_top = -31.0
+offset_right = 15.0
+offset_bottom = -1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TabLabel" type="Label" parent="BottomBar/TabRow/TabAchievement" unique_id=623808355]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -26.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 12
+text = "成就"
+horizontal_alignment = 1

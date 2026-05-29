@@ -245,8 +245,8 @@ func _rebuild_cards() -> void:
 		cards.add_child(btn)
 
 		var tween := create_tween()
-		tween.tween_interval(0.08 * float(i))
-		tween.tween_property(btn, "modulate:a", 1.0, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.set_parallel(true)
+		tween.tween_property(btn, "modulate:a", 1.0, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 func _pick(index: int) -> void:

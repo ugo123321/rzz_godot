@@ -4,6 +4,7 @@ class_name ParticleManager
 const POOL_SIZE := 500
 
 var pool: Array = []
+var lightning_bolts: Array = []
 
 
 func _ready() -> void:
@@ -14,7 +15,17 @@ func _ready() -> void:
 func clear() -> void:
 	for p in pool:
 		p.active = false
+	lightning_bolts.clear()
 	queue_redraw()
+
+
+func has_active_effects() -> bool:
+	if not lightning_bolts.is_empty():
+		return true
+	for p in pool:
+		if p.active:
+			return true
+	return false
 
 
 func emit_particle(x: float, y: float, vx: float, vy: float, life: float, size: float, color: Color, gravity: float = 0.0, shrink: bool = true, glow: bool = false) -> void:
@@ -70,6 +81,64 @@ func hit_blood_splash(pos: Vector2, from_angle: float, is_crit: bool = false) ->
 			140.0,
 			true,
 			false
+		)
+
+
+func lightning_effect(from_pos: Vector2, to_pos: Vector2) -> void:
+	var dist := from_pos.distance_to(to_pos)
+	var segments := maxi(18, int(floor(dist / 14.0)))
+	var jitter := maxf(22.0, dist * 0.14)
+	var life := clampf(0.75 + dist * 0.0022, 0.85, 1.25)
+	var points := PackedVector2Array([from_pos])
+	for i in range(1, segments):
+		var t := float(i) / float(segments)
+		points.append(Vector2(
+			from_pos.x + (to_pos.x - from_pos.x) * t + randf_range(-jitter, jitter),
+			from_pos.y + (to_pos.y - from_pos.y) * t + randf_range(-jitter, jitter)
+		))
+	points.append(to_pos)
+	lightning_bolts.append({
+		"points": points,
+		"life": life,
+		"max_life": life,
+	})
+
+	var spark_colors: Array[Color] = [
+		Color("#ffff00"),
+		Color.WHITE,
+		Color("#88eeff"),
+		Color("#cceeff"),
+	]
+	var spark_count := maxi(28, int(floor(dist / 10.0)))
+	for i in range(spark_count + 1):
+		var t := float(i) / float(spark_count)
+		emit_particle(
+			from_pos.x + (to_pos.x - from_pos.x) * t + randf_range(-14.0, 14.0),
+			from_pos.y + (to_pos.y - from_pos.y) * t + randf_range(-14.0, 14.0),
+			randf_range(-40.0, 40.0),
+			randf_range(-40.0, 40.0),
+			randf_range(0.35, 0.65),
+			randf_range(5.0, 11.0),
+			spark_colors[randi() % spark_colors.size()],
+			0.0,
+			true,
+			true
+		)
+
+	for i in range(14):
+		var a := float(i) / 14.0 * TAU
+		var spd := randf_range(80.0, 180.0)
+		emit_particle(
+			from_pos.x, from_pos.y,
+			cos(a) * spd, sin(a) * spd,
+			randf_range(0.28, 0.5), randf_range(6.0, 12.0),
+			Color.WHITE, 0.0, true, true
+		)
+		emit_particle(
+			to_pos.x, to_pos.y,
+			cos(a) * spd, sin(a) * spd,
+			randf_range(0.28, 0.5), randf_range(6.0, 12.0),
+			Color("#ffff00"), 0.0, true, true
 		)
 
 
@@ -157,12 +226,35 @@ func update_particles(delta: float) -> void:
 		p.life -= delta
 		if p.life <= 0.0:
 			p.active = false
+	for i in range(lightning_bolts.size() - 1, -1, -1):
+		any = true
+		lightning_bolts[i].life -= delta
+		if lightning_bolts[i].life <= 0.0:
+			lightning_bolts.remove_at(i)
 	if any:
 		queue_redraw()
 
 
+func _draw_lightning_bolts(canvas: Node2D, offset: Vector2) -> void:
+	for bolt in lightning_bolts:
+		var points: PackedVector2Array = bolt.get("points", PackedVector2Array())
+		if points.size() < 2:
+			continue
+		var t := clampf(float(bolt.life) / float(bolt.max_life), 0.0, 1.0)
+		var local_points := PackedVector2Array()
+		local_points.resize(points.size())
+		for i in range(points.size()):
+			local_points[i] = points[i] + offset
+
+		var outer := Color(0.39, 0.78, 1.0, 0.65 * t)
+		canvas.draw_polyline(local_points, outer, 16.0, true)
+		canvas.draw_polyline(local_points, Color(1.0, 1.0, 1.0, t), 6.0, true)
+		canvas.draw_polyline(local_points, Color(1.0, 0.91, 0.25, t), 3.0, true)
+
+
 func draw_particles(canvas: Node2D) -> void:
 	var offset := -canvas.global_position
+	_draw_lightning_bolts(canvas, offset)
 	for p in pool:
 		if not p.active:
 			continue

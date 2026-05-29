@@ -24,6 +24,11 @@ func _ready() -> void:
 
 
 func reset_for_stage() -> void:
+	clear_presentation()
+	round_attack_resolved = true
+
+
+func clear_presentation() -> void:
 	resolving = false
 	pending_hits.clear()
 	resolve_timer = 0.0
@@ -31,7 +36,6 @@ func reset_for_stage() -> void:
 	afterimages.clear()
 	slash_hit_fx.clear()
 	_death_stagger_index = 0
-	round_attack_resolved = true
 
 
 func begin_round_attack() -> void:
@@ -124,6 +128,14 @@ func get_path_preview_hit_counts(path: Array, player: BattlePlayer, targets: Arr
 	return result
 
 
+func get_path_preview_total_hits(path: Array, player: BattlePlayer, targets: Array) -> int:
+	var preview := get_path_preview_hit_counts(path, player, targets)
+	var total := 0
+	for id in preview:
+		total += int(preview[id])
+	return total
+
+
 static func path_preview_ring_color(hit_count: int) -> Color:
 	match clampi(hit_count, 0, 4):
 		1:
@@ -138,6 +150,10 @@ static func path_preview_ring_color(hit_count: int) -> Color:
 
 func update_path_preview_highlights(path: Array, player: BattlePlayer, targets: Array) -> void:
 	var preview := get_path_preview_hit_counts(path, player, targets) if path.size() >= 2 and player != null else {}
+	var total_hits := 0
+	for id in preview:
+		total_hits += int(preview[id])
+	var marked_increase := false
 	for m in targets:
 		if not is_instance_valid(m):
 			continue
@@ -145,8 +161,15 @@ func update_path_preview_highlights(path: Array, player: BattlePlayer, targets: 
 			continue
 		var count := int(preview.get(m.get_instance_id(), 0))
 		if m.path_target_hit_count != count:
+			if count > int(m.path_target_hit_count):
+				marked_increase = true
 			m.path_target_hit_count = count
 			m.queue_redraw()
+	if marked_increase:
+		var battle := get_tree().get_first_node_in_group("battle")
+		if battle:
+			var combo := clampf(float(maxi(total_hits, 2)), 2.0, 36.0)
+			battle.shake_camera(1.15 + (combo - 2.0) * 0.065, 0.055 + (combo - 2.0) * 0.002)
 
 
 func clear_path_preview_highlights(targets: Array) -> void:
@@ -211,6 +234,18 @@ func _apply_hit(player: BattlePlayer, hit: Dictionary) -> void:
 	if bool(result.get("blocked_by_shield", false)):
 		spawn_damage_number(hit.pos, 0, false, false, Color("#9fb8d8"))
 		return
+	var dealt_damage := int(result.get("damage", 0))
+	if dealt_damage > 0 and not bool(result.get("started_dying", false)):
+		var extra_base := player.get_ability_damage(1.0)
+		var extra_damage := LobbyState.roll_weapon_extra_damage(extra_base)
+		if extra_damage > 0 and not _is_non_targetable(monster):
+			var extra_result: Dictionary = monster.take_damage(extra_damage, player.global_position)
+			var actual_extra := int(extra_result.get("damage", 0))
+			if actual_extra > 0:
+				spawn_damage_number(hit.pos + Vector2(0.0, -10.0), actual_extra, false, false, Color("#ffd27a"))
+			if bool(extra_result.get("started_dying", false)):
+				result["started_dying"] = true
+			result["damage"] = dealt_damage + actual_extra
 	var combo_count: float = player.register_combo_hit()
 	spawn_damage_number(hit.pos, int(result.get("damage", 0)), bool(dmg_info.is_crit))
 	var battle := get_tree().get_first_node_in_group("battle")
@@ -319,35 +354,9 @@ func draw_slash_hit_fx(canvas: Node2D) -> void:
 func _finish_resolve(player: BattlePlayer) -> void:
 	resolving = false
 	pending_hits.clear()
-	_apply_clone_hits(player)
 	if player:
 		player.end_combo_turn()
 	resolve_finished.emit()
-
-
-func _apply_clone_hits(player: BattlePlayer) -> void:
-	if player == null or player.shadow_clones.is_empty():
-		return
-	var battle := get_tree().get_first_node_in_group("battle")
-	if battle == null or battle.spawner == null:
-		return
-	var monsters: Array = battle.spawner.get_active_monsters()
-	var clone_dmg := player.get_ability_damage(0.2)
-	var clone_r := player.get_effective_radius() * 0.7
-	for pos in player.get_shadow_clone_positions():
-		for m in monsters:
-			if _is_non_targetable(m):
-				continue
-			var hit_r := 13.0
-			if m.has_method("get_hitbox_radius"):
-				hit_r = m.get_hitbox_radius()
-			if pos.distance_to(m.global_position) > clone_r + hit_r:
-				continue
-			if m.has_method("take_damage"):
-				var result: Dictionary = m.take_damage(clone_dmg, pos)
-				spawn_damage_number(m.global_position, int(result.get("damage", 0)), false)
-				if bool(result.get("started_dying", false)):
-					EventBus.monster_killed.emit(m)
 
 
 func try_ice_burst(player: BattlePlayer, center: Vector2) -> void:
