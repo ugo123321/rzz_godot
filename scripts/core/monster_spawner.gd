@@ -161,8 +161,8 @@ func _spawn_wave_delay() -> float:
 
 func _init_clusters(battle: Node) -> void:
 	spawn_clusters.clear()
-	var w := float(GameConfig.get_tuning("logical_width", 390))
-	var h := float(GameConfig.get_tuning("logical_height", 700))
+	var w := float(GameConfig.get_tuning("logical_width", 720))
+	var h := float(GameConfig.get_tuning("logical_height", 1280))
 	var safe: Vector2 = battle.player.global_position if battle.player else Vector2(w * 0.5, h * 0.62)
 	var min_player_dist := 140.0
 	var cluster_count := randi_range(5, 9)
@@ -185,8 +185,8 @@ func _init_clusters(battle: Node) -> void:
 
 
 func _pick_spawn_pos(battle: Node) -> Vector2:
-	var w := float(GameConfig.get_tuning("logical_width", 390))
-	var h := float(GameConfig.get_tuning("logical_height", 700))
+	var w := float(GameConfig.get_tuning("logical_width", 720))
+	var h := float(GameConfig.get_tuning("logical_height", 1280))
 	var safe: Vector2 = battle.player.global_position if battle.player else Vector2(w * 0.5, h * 0.62)
 	for i in range(140):
 		var pos := Vector2.ZERO

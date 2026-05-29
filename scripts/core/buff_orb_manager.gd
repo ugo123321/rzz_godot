@@ -29,8 +29,8 @@ func reset() -> void:
 func spawn_for_stage(_stage_index: int, safe_zone: Vector2) -> void:
 	reset()
 	var cfg := GameConfig.buff_orbs
-	var w := float(GameConfig.get_tuning("logical_width", 390))
-	var h := float(GameConfig.get_tuning("logical_height", 700))
+	var w := float(GameConfig.get_tuning("logical_width", 720))
+	var h := float(GameConfig.get_tuning("logical_height", 1280))
 	var play_bottom := h - 120.0
 	var base_types: Array = cfg.get("base_types", ["attack", "ki", "combo"])
 	var max_per_type := int(cfg.get("max_per_type", 4))

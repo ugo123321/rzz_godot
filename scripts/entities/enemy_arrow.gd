@@ -147,7 +147,7 @@ static func _create(
 	arrow._effect_key = effect_key
 	arrow._tint = tint
 	arrow.velocity = dir * maxf(40.0, speed)
-	arrow.global_position = from_pos + dir * SPAWN_OFFSET
+	arrow.global_position = from_pos + dir * GameConfig.scale_world(SPAWN_OFFSET)
 	if arrow._uses_vertical_fx() and not effect_key.is_empty():
 		arrow.rotation = 0.0
 	else:
@@ -194,7 +194,7 @@ func _uses_vertical_fx() -> bool:
 
 
 func _vertical_fx_scale() -> Vector2:
-	var base := SpriteHelper.pixel_scale(DRAW_SCALE)
+	var base := SpriteHelper.pixel_scale(DRAW_SCALE * GameConfig.get_world_scale())
 	var scale := Vector2(base, base * VERTICAL_FX_SCALE_Y)
 	if velocity.y > 0.0:
 		scale.y = -absf(scale.y)
@@ -211,7 +211,7 @@ func _ready() -> void:
 			_animated_sprite.play(EffectHelper.ANIM_PREVIEW)
 			_animated_sprite.centered = true
 			_animated_sprite.modulate = _tint
-			_animated_sprite.scale = _vertical_fx_scale() if _uses_vertical_fx() else Vector2.ONE * SpriteHelper.pixel_scale(DRAW_SCALE)
+			_animated_sprite.scale = _vertical_fx_scale() if _uses_vertical_fx() else Vector2.ONE * SpriteHelper.pixel_scale(DRAW_SCALE * GameConfig.get_world_scale())
 			SpriteHelper.apply_pixel_art(_animated_sprite)
 			add_child(_animated_sprite)
 			return
@@ -223,7 +223,7 @@ func _ready() -> void:
 		_static_sprite.texture = load(DEFAULT_ARROW_TEXTURES[1])
 	_static_sprite.centered = true
 	_static_sprite.modulate = _tint
-	_static_sprite.scale = _vertical_fx_scale() if _uses_vertical_fx() else Vector2.ONE * SpriteHelper.pixel_scale(DRAW_SCALE)
+	_static_sprite.scale = _vertical_fx_scale() if _uses_vertical_fx() else Vector2.ONE * SpriteHelper.pixel_scale(DRAW_SCALE * GameConfig.get_world_scale())
 	SpriteHelper.apply_pixel_art(_static_sprite)
 	add_child(_static_sprite)
 
@@ -231,8 +231,8 @@ func _ready() -> void:
 func _try_bounce() -> bool:
 	if pattern != Pattern.BOUNCE or bounces_left <= 0:
 		return false
-	var w := float(GameConfig.get_tuning("logical_width", 390))
-	var h := float(GameConfig.get_tuning("logical_height", 700))
+	var w := float(GameConfig.get_tuning("logical_width", 720))
+	var h := float(GameConfig.get_tuning("logical_height", 1280))
 	var pos := global_position
 	var bounced := false
 	if pos.x <= 0.0:
@@ -268,7 +268,7 @@ func _try_hit_player() -> bool:
 	if _player.is_attack_invincible():
 		return false
 	var player_r := _player.get_effective_radius() + 2.0
-	if global_position.distance_to(_player.global_position) > HIT_RADIUS + player_r:
+	if global_position.distance_to(_player.global_position) > GameConfig.scale_world(HIT_RADIUS) + player_r:
 		return false
 	_alive = false
 	var dealt := _player.take_damage(damage)

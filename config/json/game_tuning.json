@@ -1,12 +1,12 @@
 [
   {
     "key": "logical_width",
-    "value": 390,
+    "value": 720,
     "description": "逻辑宽度"
   },
   {
     "key": "logical_height",
-    "value": 700,
+    "value": 1280,
     "description": "逻辑高度"
   },
   {
@@ -15,13 +15,23 @@
     "description": "单位缩放"
   },
   {
+    "key": "world_scale",
+    "value": 1.0,
+    "description": "世界比例微调(乘在分辨率比例后)"
+  },
+  {
+    "key": "ui_scale",
+    "value": 1.0,
+    "description": "界面比例微调(乘在分辨率比例后)"
+  },
+  {
     "key": "camera_zoom",
     "value": 1,
     "description": "战斗镜头缩放(1=正常，勿随意改大)"
   },
   {
     "key": "monster_sprite_scale",
-    "value": 2,
+    "value": 3.7,
     "description": "怪物显示缩放"
   },
   {
@@ -248,5 +258,10 @@
     "key": "stage_atk_growth",
     "value": 1.12,
     "description": "关卡攻击缩放幂次"
+  },
+  {
+    "key": "monster_speed_mul",
+    "value": 1.15,
+    "description": "怪物移速全局倍率"
   }
 ]

@@ -3,10 +3,10 @@ class_name VirtualJoystick
 
 ## 浮动摇杆：在触摸点出现，方向输出恒为归一化向量（固定速率移动）。
 
-const BASE_RADIUS := 48.0
-const KNOB_RADIUS := 20.0
-const MAX_DRAG_RADIUS := 56.0
-const DEADZONE_RATIO := 0.12
+const BASE_RADIUS := 120.0
+const KNOB_RADIUS := 48.0
+const MAX_DRAG_RADIUS := 138.0
+const DEADZONE_RATIO := 0.18
 
 const BASE_FILL := Color(1.0, 1.0, 1.0, 0.14)
 const BASE_RING := Color(1.0, 1.0, 1.0, 0.42)
@@ -19,6 +19,10 @@ var output: Vector2 = Vector2.ZERO
 var _active := false
 var _center := Vector2.ZERO
 var _knob := Vector2.ZERO
+
+
+func _scaled(v: float) -> float:
+	return GameConfig.scale_ui(v)
 
 
 func _ready() -> void:
@@ -75,10 +79,11 @@ func _begin(screen_pos: Vector2) -> void:
 
 func _update_knob(screen_pos: Vector2) -> void:
 	var offset := screen_pos - _center
-	if offset.length() > MAX_DRAG_RADIUS:
-		offset = offset.normalized() * MAX_DRAG_RADIUS
+	var max_drag := _scaled(MAX_DRAG_RADIUS)
+	if offset.length() > max_drag:
+		offset = offset.normalized() * max_drag
 	_knob = _center + offset
-	var ratio := offset.length() / MAX_DRAG_RADIUS
+	var ratio := offset.length() / max_drag
 	if ratio < DEADZONE_RATIO:
 		output = Vector2.ZERO
 	else:
@@ -106,8 +111,11 @@ func _draw() -> void:
 		return
 	var center := _screen_to_local(_center)
 	var knob := _screen_to_local(_knob)
-	draw_circle(center, BASE_RADIUS, BASE_FILL)
-	draw_arc(center, BASE_RADIUS, 0.0, TAU, 48, BASE_RING, 2.0)
-	draw_line(center, knob, Color(1.0, 1.0, 1.0, 0.28), 2.0)
-	draw_circle(knob, KNOB_RADIUS, KNOB_FILL)
-	draw_arc(knob, KNOB_RADIUS, 0.0, TAU, 32, KNOB_RING, 2.0)
+	var base_r := _scaled(BASE_RADIUS)
+	var knob_r := _scaled(KNOB_RADIUS)
+	var line_w := maxf(2.0, _scaled(2.0))
+	draw_circle(center, base_r, BASE_FILL)
+	draw_arc(center, base_r, 0.0, TAU, 48, BASE_RING, line_w)
+	draw_line(center, knob, Color(1.0, 1.0, 1.0, 0.28), line_w)
+	draw_circle(knob, knob_r, KNOB_FILL)
+	draw_arc(knob, knob_r, 0.0, TAU, 32, KNOB_RING, line_w)

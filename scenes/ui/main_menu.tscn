@@ -2,10 +2,24 @@
 
 [ext_resource type="Script" uid="uid://bm3sw56t7hldi" path="res://scripts/ui/main_menu.gd" id="1"]
 [ext_resource type="Script" uid="uid://d01uyh7ncexiv" path="res://scripts/ui/equipment_panel.gd" id="2"]
-[ext_resource type="Texture2D" uid="uid://1n3ldxyyajdm" path="res://scenes/ui/Wox grass fill.png" id="2_1g8jr"]
+[ext_resource type="Texture2D" uid="uid://cca5umf6npirk" path="res://assets/ui/battle/bg_main.png" id="3_bg_main"]
+[ext_resource type="Texture2D" uid="uid://124ngcud0ohn" path="res://assets/ui/battle/decoration_main.png" id="4_decor_main"]
+[ext_resource type="Texture2D" uid="uid://bakfqcyvkv34f" path="res://assets/ui/battle/decoration_wave.png" id="5_decor_wave"]
+[ext_resource type="Texture2D" uid="uid://beanu6i8q6j37" path="res://assets/ui/battle/mission_forest.png" id="6_mission"]
+[ext_resource type="Texture2D" uid="uid://bd3mrpph35vf0" path="res://assets/ui/battle/start_button.png" id="7_start"]
+[ext_resource type="Texture2D" uid="uid://3no6q1s1w2lg" path="res://assets/ui/battle/money_bg.png" id="8_money_bg"]
+[ext_resource type="Texture2D" uid="uid://nsvmptqwdy3" path="res://assets/ui/battle/gem_icon.png" id="9_1_gem_icon"]
+[ext_resource type="Texture2D" uid="uid://jkwy8x7016ic" path="res://assets/ui/battle/gold_icon.png" id="9_gold_icon"]
+[ext_resource type="Texture2D" uid="uid://ddi8qdpland64" path="res://assets/ui/bottom/normal_button.png" id="10_tab_normal"]
+[ext_resource type="Texture2D" uid="uid://r1stngsd8fai" path="res://assets/ui/bottom/picked_button.png" id="11_tab_picked"]
+[ext_resource type="Texture2D" uid="uid://l5mk4hwcgorc" path="res://assets/ui/bottom/shop_icon.png" id="12_tab_shop"]
+[ext_resource type="Texture2D" uid="uid://bgbjww6bnbxr5" path="res://assets/ui/bottom/equipment_icon.png" id="13_tab_equip"]
+[ext_resource type="Texture2D" uid="uid://d1duu0ppfmcwf" path="res://assets/ui/bottom/battle_icon.png" id="14_tab_battle"]
+[ext_resource type="Texture2D" uid="uid://brrt48cfcj8hp" path="res://assets/ui/bottom/dungeon_icon.png" id="15_tab_dungeon"]
+[ext_resource type="Texture2D" uid="uid://c76dabbwkh770" path="res://assets/ui/bottom/book_icon.png" id="16_tab_book"]
 
 [node name="MainMenu" type="Control" unique_id=230988136]
-custom_minimum_size = Vector2(390, 700)
+custom_minimum_size = Vector2(720, 1280)
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -31,20 +45,127 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-texture = ExtResource("2_1g8jr")
+texture = ExtResource("3_bg_main")
 expand_mode = 1
-stretch_mode = 2
+stretch_mode = 6
+
+[node name="TopBar" type="HBoxContainer" parent="." unique_id=1832171002]
+layout_mode = 1
+offset_left = 16.0
+offset_top = 14.0
+offset_right = 304.0
+offset_bottom = 47.0
+theme_override_constants/separation = 10
+
+[node name="GoldBar" type="Control" parent="TopBar" unique_id=197577220]
+custom_minimum_size = Vector2(139, 31)
+layout_mode = 2
+
+[node name="Bg" type="TextureRect" parent="TopBar/GoldBar" unique_id=1435181746]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("8_money_bg")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Icon" type="TextureRect" parent="TopBar/GoldBar" unique_id=1188380432]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 6.0
+offset_top = -11.0
+offset_right = 28.0
+offset_bottom = 11.0
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("9_gold_icon")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Value" type="Label" parent="TopBar/GoldBar" unique_id=29249098]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 32.0
+offset_right = -10.0
+offset_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 16
+text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="GemBar" type="Control" parent="TopBar" unique_id=694785780]
+custom_minimum_size = Vector2(139, 31)
+layout_mode = 2
+
+[node name="Bg" type="TextureRect" parent="TopBar/GemBar" unique_id=2137566285]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("8_money_bg")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Icon" type="TextureRect" parent="TopBar/GemBar" unique_id=932388855]
+layout_mode = 1
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 6.0
+offset_top = -11.0
+offset_right = 28.0
+offset_bottom = 11.0
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("9_1_gem_icon")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Value" type="Label" parent="TopBar/GemBar" unique_id=205499942]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 32.0
+offset_right = -10.0
+offset_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 3
+theme_override_font_sizes/font_size = 16
+text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="Content" type="MarginContainer" parent="." unique_id=1976002474]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_bottom = -88.0
+offset_bottom = -168.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/margin_left = 16
-theme_override_constants/margin_top = 24
+theme_override_constants/margin_top = 70
 theme_override_constants/margin_right = 16
 theme_override_constants/margin_bottom = 8
 
@@ -62,7 +183,7 @@ text = "抽奖功能
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="EquipmentPanel" type="CenterContainer" parent="Content" unique_id=265035585]
+[node name="EquipmentPanel" type="Control" parent="Content" unique_id=265035585]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -70,7 +191,7 @@ size_flags_vertical = 3
 script = ExtResource("2")
 
 [node name="Placeholder" type="Label" parent="Content/EquipmentPanel" unique_id=1285982816]
-layout_mode = 2
+layout_mode = 0
 theme_override_font_sizes/font_size = 20
 text = "装备系统
 敬请期待"
@@ -87,56 +208,55 @@ alignment = 1
 [node name="ChapterName" type="Label" parent="Content/StagePanel" unique_id=729538341]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 24
-text = "第一章"
+text = "Battle 1"
 horizontal_alignment = 1
 
 [node name="ChapterDesc" type="Label" parent="Content/StagePanel" unique_id=1169332738]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.75, 0.78, 0.85, 1)
-theme_override_font_sizes/font_size = 14
-text = "入门章节"
+theme_override_colors/font_color = Color(0, 0, 0, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 1
+theme_override_font_sizes/font_size = 58
+text = "Whisperwood"
 horizontal_alignment = 1
 autowrap_mode = 2
 
 [node name="StageViewport" type="Control" parent="Content/StagePanel" unique_id=2137268502]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 360)
+custom_minimum_size = Vector2(0, 560)
 layout_mode = 2
 size_flags_vertical = 3
 
 [node name="SkyGlow" type="TextureRect" parent="Content/StagePanel/StageViewport" unique_id=2037169411]
 unique_name_in_owner = true
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -148.0
-offset_top = -188.0
-offset_right = 148.0
-offset_bottom = 68.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+texture = ExtResource("5_decor_wave")
 expand_mode = 1
-stretch_mode = 4
+stretch_mode = 6
 
 [node name="GroundStrip" type="TextureRect" parent="Content/StagePanel/StageViewport" unique_id=2015096238]
 unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = -146.0
-grow_horizontal = 2
-grow_vertical = 0
+visible = false
+layout_mode = 0
+offset_left = 118.0
+offset_top = 98.0
+offset_right = 571.0
+offset_bottom = 640.0
 mouse_filter = 2
+texture = ExtResource("6_mission")
 expand_mode = 1
-stretch_mode = 6
+stretch_mode = 4
 
 [node name="StageIconPivot" type="Control" parent="Content/StagePanel/StageViewport" unique_id=39341426]
 unique_name_in_owner = true
@@ -146,10 +266,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -150.0
-offset_top = -98.0
-offset_right = 150.0
-offset_bottom = 202.0
+offset_left = -226.0
+offset_top = -173.0
+offset_right = 226.0
+offset_bottom = 369.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
@@ -160,9 +280,12 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_top = -149.0
+offset_bottom = -149.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+texture = ExtResource("6_mission")
 expand_mode = 1
 stretch_mode = 4
 
@@ -199,41 +322,30 @@ grow_vertical = 2
 ignore_texture_size = true
 stretch_mode = 5
 
-[node name="StartButtonWrap" type="MarginContainer" parent="Content/StagePanel" unique_id=1442269505]
-layout_mode = 2
-size_flags_horizontal = 4
-theme_override_constants/margin_top = -100
+[node name="StartButtonWrap" type="MarginContainer" parent="Content/StagePanel/StageViewport" unique_id=1442269505]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -150.0
+offset_top = -155.0
+offset_right = 150.0
+offset_bottom = -48.0
+grow_horizontal = 2
+grow_vertical = 0
 
-[node name="StartButton" type="TextureButton" parent="Content/StagePanel/StartButtonWrap" unique_id=1743837995]
+[node name="StartButton" type="TextureButton" parent="Content/StagePanel/StageViewport/StartButtonWrap" unique_id=1743837995]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(163, 48)
+custom_minimum_size = Vector2(300, 107)
 layout_mode = 2
 size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
+texture_normal = ExtResource("7_start")
+texture_hover = ExtResource("7_start")
 ignore_texture_size = true
 stretch_mode = 5
-
-[node name="StartLabel" type="Label" parent="Content/StagePanel/StartButtonWrap/StartButton" unique_id=1934391349]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 6.0
-offset_top = -1.0
-offset_right = -6.0
-offset_bottom = -5.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_colors/font_color = Color(0, 0, 0, 1)
-theme_override_colors/font_shadow_color = Color(0.18, 0.1, 0.02, 0.35)
-theme_override_colors/font_outline_color = Color(0.22, 0.16, 0.08, 0.55)
-theme_override_constants/shadow_offset_x = 0
-theme_override_constants/shadow_offset_y = 0
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 16
-text = "开始冒险"
-horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="DungeonPanel" type="CenterContainer" parent="Content" unique_id=7959425]
 unique_name_in_owner = true
@@ -263,14 +375,37 @@ text = "成就系统
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="Content_StagePanel_StartButtonWrap_StartButton#StartLabel" type="Label" parent="." unique_id=1934391349]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 6.0
+offset_top = -6.0
+offset_right = -6.0
+offset_bottom = -5.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.35)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/shadow_offset_x = 0
+theme_override_constants/shadow_offset_y = 0
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 52
+text = "START"
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="BottomBar" type="Control" parent="." unique_id=372677655]
-custom_minimum_size = Vector2(0, 96)
+custom_minimum_size = Vector2(0, 168)
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -96.0
+offset_top = -168.0
 grow_horizontal = 2
 grow_vertical = 0
 
@@ -282,26 +417,20 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+texture = ExtResource("5_decor_wave")
 expand_mode = 1
 stretch_mode = 6
 
 [node name="TabRail" type="TextureRect" parent="BottomBar" unique_id=1244263719]
 unique_name_in_owner = true
+visible = false
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -162.0
-offset_top = -28.0
-offset_right = 162.0
-offset_bottom = 30.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-expand_mode = 1
-stretch_mode = 4
 
 [node name="TabFocus" type="TextureRect" parent="BottomBar" unique_id=1538070715]
 unique_name_in_owner = true
@@ -320,15 +449,18 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 4
 alignment = 1
 
 [node name="TabGacha" type="TextureButton" parent="BottomBar/TabRow" unique_id=27337258]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(64, 78)
+custom_minimum_size = Vector2(104, 143)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
+texture_normal = ExtResource("10_tab_normal")
+texture_pressed = ExtResource("10_tab_normal")
+texture_hover = ExtResource("10_tab_normal")
 ignore_texture_size = true
 stretch_mode = 5
 
@@ -339,13 +471,14 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -15.0
-offset_top = -31.0
-offset_right = 15.0
-offset_bottom = -1.0
+offset_left = -31.0
+offset_top = -43.0
+offset_right = 31.0
+offset_bottom = 19.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+texture = ExtResource("12_tab_shop")
 expand_mode = 1
 stretch_mode = 5
 
@@ -355,19 +488,24 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -26.0
+offset_top = -35.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_font_sizes/font_size = 12
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 34
 text = "抽奖"
 horizontal_alignment = 1
 
 [node name="TabEquipment" type="TextureButton" parent="BottomBar/TabRow" unique_id=1345801330]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(64, 78)
+custom_minimum_size = Vector2(104, 143)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
+texture_normal = ExtResource("10_tab_normal")
+texture_pressed = ExtResource("10_tab_normal")
+texture_hover = ExtResource("10_tab_normal")
 ignore_texture_size = true
 stretch_mode = 5
 
@@ -378,13 +516,14 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -15.0
-offset_top = -31.0
-offset_right = 15.0
-offset_bottom = -1.0
+offset_left = -31.0
+offset_top = -43.0
+offset_right = 31.0
+offset_bottom = 19.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+texture = ExtResource("13_tab_equip")
 expand_mode = 1
 stretch_mode = 5
 
@@ -394,19 +533,24 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -26.0
+offset_top = -35.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_font_sizes/font_size = 12
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 30
 text = "装备"
 horizontal_alignment = 1
 
 [node name="TabStage" type="TextureButton" parent="BottomBar/TabRow" unique_id=1203776899]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(64, 78)
+custom_minimum_size = Vector2(104, 143)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
+texture_normal = ExtResource("11_tab_picked")
+texture_pressed = ExtResource("11_tab_picked")
+texture_hover = ExtResource("11_tab_picked")
 ignore_texture_size = true
 stretch_mode = 5
 
@@ -417,13 +561,14 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -15.0
-offset_top = -31.0
-offset_right = 15.0
-offset_bottom = -1.0
+offset_left = -31.0
+offset_top = -43.0
+offset_right = 31.0
+offset_bottom = 19.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+texture = ExtResource("14_tab_battle")
 expand_mode = 1
 stretch_mode = 5
 
@@ -433,19 +578,24 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -26.0
+offset_top = -35.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_font_sizes/font_size = 12
-text = "关卡"
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 30
+text = "Battle"
 horizontal_alignment = 1
 
 [node name="TabDungeon" type="TextureButton" parent="BottomBar/TabRow" unique_id=650931740]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(64, 78)
+custom_minimum_size = Vector2(104, 143)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
+texture_normal = ExtResource("10_tab_normal")
+texture_pressed = ExtResource("10_tab_normal")
+texture_hover = ExtResource("10_tab_normal")
 ignore_texture_size = true
 stretch_mode = 5
 
@@ -456,13 +606,14 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -15.0
-offset_top = -31.0
-offset_right = 15.0
-offset_bottom = -1.0
+offset_left = -31.0
+offset_top = -43.0
+offset_right = 31.0
+offset_bottom = 19.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+texture = ExtResource("15_tab_dungeon")
 expand_mode = 1
 stretch_mode = 5
 
@@ -472,19 +623,24 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -26.0
+offset_top = -35.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_font_sizes/font_size = 12
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 30
 text = "副本"
 horizontal_alignment = 1
 
 [node name="TabAchievement" type="TextureButton" parent="BottomBar/TabRow" unique_id=594465094]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(64, 78)
+custom_minimum_size = Vector2(104, 143)
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
+texture_normal = ExtResource("10_tab_normal")
+texture_pressed = ExtResource("10_tab_normal")
+texture_hover = ExtResource("10_tab_normal")
 ignore_texture_size = true
 stretch_mode = 5
 
@@ -495,13 +651,14 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -15.0
-offset_top = -31.0
-offset_right = 15.0
-offset_bottom = -1.0
+offset_left = -31.0
+offset_top = -43.0
+offset_right = 31.0
+offset_bottom = 19.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+texture = ExtResource("16_tab_book")
 expand_mode = 1
 stretch_mode = 5
 
@@ -511,9 +668,26 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = -26.0
+offset_top = -35.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_font_sizes/font_size = 12
-text = "成就"
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 30
+text = "图鉴"
 horizontal_alignment = 1
+
+[node name="ChapterLine" type="TextureRect" parent="." unique_id=1220847887]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(480, 18)
+layout_mode = 0
+offset_left = 167.0
+offset_top = 215.0
+offset_right = 647.0
+offset_bottom = 271.0
+scale = Vector2(0.8, 0.8)
+size_flags_horizontal = 4
+mouse_filter = 2
+texture = ExtResource("4_decor_main")
+stretch_mode = 3
+flip_h = true

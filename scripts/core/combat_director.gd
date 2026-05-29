@@ -5,8 +5,8 @@ const EffectHelperScript = preload("res://scripts/utils/effect_helper.gd")
 
 signal resolve_finished
 
-const SLASH_HIT_FX_SCALE := 1.35
-const SLASH_HIT_FX_DRAW_SCALE := 1.8
+const SLASH_HIT_FX_SCALE := 1.55
+const SLASH_HIT_FX_DRAW_SCALE := 2.15
 
 var resolving := false
 var round_attack_resolved := true

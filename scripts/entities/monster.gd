@@ -1,6 +1,10 @@
 extends Node2D
 class_name BattleMonster
 
+const HP_BAR_Y_OFFSET := 9.0
+const MELEE_REACH_PAD := 6.0
+const MELEE_STOP_PAD := 2.0
+
 var kind_id := "NORMAL"
 var display_name := ""
 var alive := true
@@ -62,7 +66,7 @@ func setup(monster_kind: String, stage_index: int, spawn_pos: Vector2) -> void:
 	defense = int(stats.get("def", 0))
 	attack = int(stats.get("attack", 1))
 	attack_interval = float(stats.get("attack_interval", 1.0))
-	hitbox_radius = float(stats.get("size", 13))
+	hitbox_radius = GameConfig.scale_world(float(stats.get("size", 13)))
 	move_speed = float(stats.get("speed", 19))
 	can_move = int(stats.get("can_move", 1)) != 0
 	ranged = int(stats.get("ranged", 0)) != 0
@@ -156,6 +160,18 @@ func get_head_top_global_position() -> Vector2:
 		_get_sprite(),
 		global_position + Vector2(0.0, -hitbox_radius * 1.5)
 	)
+
+
+func _melee_attack_range(player: BattlePlayer) -> float:
+	if player == null:
+		return GameConfig.scale_world(30.0)
+	return player.get_effective_radius() + hitbox_radius + GameConfig.scale_world(MELEE_REACH_PAD)
+
+
+func _melee_stop_distance(player: BattlePlayer) -> float:
+	if player == null:
+		return GameConfig.scale_world(26.0)
+	return player.get_effective_radius() + hitbox_radius + GameConfig.scale_world(MELEE_STOP_PAD)
 
 
 func is_combat_targetable() -> bool:
@@ -293,9 +309,9 @@ func update_ai(delta: float, player: BattlePlayer, battle: Node) -> void:
 	var preserve_anim := hurt_reaction_timer > 0.0 or SpriteHelper.is_playing_priority_anim(anim_sprite)
 	if can_move:
 		var dist := to_player.length()
-		var stop_dist := 26.0
+		var stop_dist := _melee_stop_distance(player)
 		if ranged:
-			stop_dist = attack_range * 0.85 if attack_range > 0.0 else 140.0
+			stop_dist = attack_range * 0.85 if attack_range > 0.0 else GameConfig.scale_world(140.0)
 		if dist > stop_dist:
 			global_position += to_player.normalized() * move_speed * delta
 			if not preserve_anim:
@@ -311,7 +327,7 @@ func update_ai(delta: float, player: BattlePlayer, battle: Node) -> void:
 			return
 		if ranged and attack_range > 0.0 and to_player.length() > attack_range:
 			return
-		if to_player.length() > 30.0 and not ranged:
+		if not ranged and to_player.length() > _melee_attack_range(player):
 			return
 		attack_timer = attack_interval
 		_perform_attack(player, battle)
@@ -442,11 +458,11 @@ func _draw_hp_bar() -> void:
 	var head_pos := to_local(get_head_top_global_position())
 	PixelUiHelper.draw_compact_hp_bar(
 		self,
-		head_pos + Vector2(0.0, 5.0),
+		head_pos + Vector2(0.0, GameConfig.scale_world(HP_BAR_Y_OFFSET)),
 		hp,
 		max_hp,
-		28.0,
-		5.0,
+		GameConfig.scale_world(28.0),
+		GameConfig.scale_world(5.0),
 		{
 			"border_color": "#2a1317",
 			"panel_fill": "#201016",
@@ -465,14 +481,14 @@ func _draw() -> void:
 		_draw_hp_bar()
 	if burn_timer > 0.0:
 		var t := 0.65 + 0.35 * sin(Time.get_ticks_msec() * 0.018)
-		draw_arc(Vector2.ZERO, hitbox_radius + 7.0, 0.0, TAU, 30, Color(1.0, 0.35, 0.2, 0.55 + 0.25 * t), 2.0)
+		draw_arc(Vector2.ZERO, hitbox_radius + GameConfig.scale_world(7.0), 0.0, TAU, 30, Color(1.0, 0.35, 0.2, 0.55 + 0.25 * t), GameConfig.scale_world(2.0))
 	if not alive or dying or path_target_hit_count <= 0:
 		return
 	var ring := CombatDirector.path_preview_ring_color(path_target_hit_count)
 	var fill := ring
 	fill.a = 0.12 + mini(path_target_hit_count, 4) * 0.04
-	var r := hitbox_radius + 5.0
-	draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, ring, 3.0)
+	var r := hitbox_radius + GameConfig.scale_world(5.0)
+	draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, ring, GameConfig.scale_world(3.0))
 	draw_circle(Vector2.ZERO, r * 0.55, fill)
 
 

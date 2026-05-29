@@ -22,7 +22,7 @@ func spawn_fire_pillar(pos: Vector2, damage: int) -> void:
 	effects.append({
 		"type": "fire_pillar",
 		"pos": pos,
-		"radius": float(GameConfig.get_tuning("fire_pillar_radius", 60)),
+		"radius": GameConfig.scale_world(float(GameConfig.get_tuning("fire_pillar_radius", 60))),
 		"damage": damage,
 		"phase": "warning",
 		"timer": float(GameConfig.get_tuning("fire_pillar_warning_time", 1.1)),

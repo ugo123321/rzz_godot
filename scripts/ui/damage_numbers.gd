@@ -1,6 +1,9 @@
 extends Node2D
 class_name DamageNumbersOverlay
 
+const FONT_SIZE := 19
+const CRIT_FONT_SIZE := 28
+
 var combat: CombatDirector
 
 
@@ -35,12 +38,16 @@ func _draw() -> void:
 			color = Color("#ff4040", t)
 		else:
 			color = Color(1.0, 1.0, 1.0, t)
-		var font_size := 22 if is_crit else 15
+		var font_size := _scaled_font(CRIT_FONT_SIZE if is_crit else FONT_SIZE)
 		var text := str(dn.get("damage", 0))
 		if is_heal:
 			text = "+%s" % text
 		var draw_pos := _get_centered_draw_pos(font, pos, text, font_size)
 		_draw_outlined_string(font, draw_pos, text, font_size, color)
+
+
+func _scaled_font(v: float) -> int:
+	return maxi(8, int(round(GameConfig.scale_ui(v))))
 
 
 func _get_centered_draw_pos(font: Font, center: Vector2, text: String, font_size: int) -> Vector2:

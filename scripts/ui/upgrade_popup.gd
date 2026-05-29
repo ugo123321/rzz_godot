@@ -25,9 +25,9 @@ func setup(battle_node: Node, manager: UpgradeManager) -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_apply_panel_layout()
 	cards.alignment = BoxContainer.ALIGNMENT_CENTER
-	cards.add_theme_constant_override("separation", 10)
-	_apply_label_font(title_label, 18)
-	_apply_label_font(rarity_label, 14)
+	cards.add_theme_constant_override("separation", 14)
+	_apply_label_font(title_label, 22)
+	_apply_label_font(rarity_label, 16)
 
 
 func _apply_label_font(label: Control, font_size: int) -> void:
@@ -39,10 +39,10 @@ func _apply_label_font(label: Control, font_size: int) -> void:
 
 func _apply_panel_layout() -> void:
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.offset_left = 14.0
-	panel.offset_top = 14.0
-	panel.offset_right = -14.0
-	panel.offset_bottom = -14.0
+	panel.offset_left = 20.0
+	panel.offset_top = 20.0
+	panel.offset_right = -20.0
+	panel.offset_bottom = -20.0
 
 
 func show_popup() -> void:
@@ -112,19 +112,19 @@ func _draw() -> void:
 
 func _calc_card_metrics(choice_count: int) -> Dictionary:
 	var vp := get_viewport_rect().size
-	var panel_w := vp.x - 28.0
-	var panel_h := vp.y - 28.0
+	var panel_w := vp.x - 40.0
+	var panel_h := vp.y - 40.0
 	var n := maxi(1, choice_count)
-	var sep := 10.0
-	var inner_pad := 16.0
+	var sep := 14.0
+	var inner_pad := 18.0
 	var card_w: float = floor((panel_w - inner_pad * 2.0 - sep * float(n - 1)) / float(n))
-	card_w = clampf(card_w, 92.0, 150.0)
-	var card_h: float = clampf(panel_h * 0.48, 108.0, 140.0)
+	card_w = clampf(card_w, 118.0, 188.0)
+	var card_h: float = clampf(panel_h * 0.52, 144.0, 220.0)
 	return {
 		"card_size": Vector2(card_w, card_h),
-		"preview_h": clampf(card_h * 0.38, 48.0, 56.0),
-		"name_font": 13 if card_w < 120.0 else 14,
-		"desc_font": 10 if card_w < 120.0 else 11,
+		"preview_h": clampf(card_h * 0.4, 64.0, 86.0),
+		"name_font": 16 if card_w < 150.0 else 18,
+		"desc_font": 12 if card_w < 150.0 else 14,
 	}
 
 

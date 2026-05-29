@@ -1,4 +1,4 @@
-extends CenterContainer
+extends Control
 class_name EquipmentPanelView
 
 const PixelUi := preload("res://scripts/utils/pixel_ui_helper.gd")
@@ -13,9 +13,6 @@ const SLOT_ORDER := [
 ]
 
 const SYNTH_SLOT_COUNT := 3
-const SYNTH_BAG_BUTTON_SIZE := Vector2(106, 74)
-const SYNTH_MATERIAL_SLOT_SIZE := Vector2(104, 74)
-const SYNTH_RESULT_SLOT_SIZE := Vector2(150, 78)
 const SYNTH_BUTTON_FONT_SIZE := 16
 const SYNTH_BUTTON_MIN_FONT_SIZE := 9
 
@@ -64,6 +61,50 @@ var _synth_toast_duration := 1.9
 var _synth_toast_base_top := 78.0
 
 
+func _ui_scale() -> float:
+	return GameConfig.get_ui_layout_scale()
+
+
+func _scaled(v: float) -> float:
+	return v * _ui_scale()
+
+
+func _available_content_width() -> float:
+	var logical_w := GameConfig.get_logical_size().x
+	var main_margin := 32.0
+	var frame_margin := _scaled(16.0) * 2.0
+	var panel_margin := 16.0
+	return maxf(_scaled(280.0), logical_w - main_margin - frame_margin - panel_margin)
+
+
+func _slot_button_size() -> Vector2:
+	var preview_w := _scaled(158.0)
+	var h_sep := _scaled(10.0)
+	var grid_h_sep := _scaled(6.0)
+	var slots_area_w := maxf(_scaled(200.0), _available_content_width() - preview_w - h_sep)
+	var btn_w: float = floor((slots_area_w - grid_h_sep) * 0.5)
+	return Vector2(maxf(_scaled(72.0), btn_w), _scaled(86.0))
+
+
+func _inventory_button_size() -> Vector2:
+	var cols := 3
+	var h_sep := _scaled(6.0)
+	var btn_w: float = floor((_available_content_width() - h_sep * float(cols - 1)) / float(cols))
+	return Vector2(maxf(_scaled(96.0), btn_w), _scaled(100.0))
+
+
+func _synth_bag_button_size() -> Vector2:
+	return Vector2(_inventory_button_size().x, _scaled(68.0))
+
+
+func _synth_material_slot_size() -> Vector2:
+	return Vector2(_scaled(94.0), _scaled(68.0))
+
+
+func _synth_result_slot_size() -> Vector2:
+	return Vector2(_scaled(138.0), _scaled(72.0))
+
+
 func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	for child in get_children():
@@ -85,12 +126,16 @@ func _connect_signals() -> void:
 
 
 func _build_ui() -> void:
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
+
 	var frame := MarginContainer.new()
 	frame.set_anchors_preset(Control.PRESET_FULL_RECT)
-	frame.add_theme_constant_override("margin_left", 12)
-	frame.add_theme_constant_override("margin_top", 10)
-	frame.add_theme_constant_override("margin_right", 12)
-	frame.add_theme_constant_override("margin_bottom", 10)
+	frame.add_theme_constant_override("margin_left", int(round(_scaled(16.0))))
+	frame.add_theme_constant_override("margin_top", int(round(_scaled(16.0))))
+	frame.add_theme_constant_override("margin_right", int(round(_scaled(16.0))))
+	frame.add_theme_constant_override("margin_bottom", int(round(_scaled(16.0))))
 	add_child(frame)
 
 	_base_root = VBoxContainer.new()
@@ -131,7 +176,7 @@ func _build_ui() -> void:
 	upper_vbox.add_child(upper_content)
 
 	var preview_box := VBoxContainer.new()
-	preview_box.custom_minimum_size = Vector2(120, 150)
+	preview_box.custom_minimum_size = Vector2(_scaled(158.0), _scaled(208.0))
 	preview_box.add_theme_constant_override("separation", 6)
 	upper_content.add_child(preview_box)
 
@@ -141,12 +186,13 @@ func _build_ui() -> void:
 	preview_box.add_child(preview_title)
 
 	var preview_container := SubViewportContainer.new()
-	preview_container.custom_minimum_size = Vector2(120, 120)
+	preview_container.custom_minimum_size = Vector2(_scaled(156.0), _scaled(156.0))
 	preview_container.stretch = true
 	preview_box.add_child(preview_container)
 
 	_preview_viewport = SubViewport.new()
-	_preview_viewport.size = Vector2i(120, 120)
+	var preview_size := Vector2i(int(round(_scaled(156.0))), int(round(_scaled(156.0))))
+	_preview_viewport.size = preview_size
 	_preview_viewport.transparent_bg = true
 	_preview_viewport.disable_3d = true
 	_preview_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -156,7 +202,7 @@ func _build_ui() -> void:
 	_preview_viewport.add_child(preview_root)
 
 	_preview_sprite = AnimatedSprite2D.new()
-	_preview_sprite.position = Vector2(60.0, 86.0)
+	_preview_sprite.position = Vector2(float(preview_size.x) * 0.5, float(preview_size.y) * 0.72)
 	preview_root.add_child(_preview_sprite)
 	_setup_preview_sprite()
 
@@ -177,7 +223,7 @@ func _build_ui() -> void:
 
 	for slot in SLOT_ORDER:
 		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(120, 56)
+		btn.custom_minimum_size = _slot_button_size()
 		btn.clip_text = true
 		btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -231,7 +277,7 @@ func _build_ui() -> void:
 	bag_title_row.add_child(synth_btn)
 
 	var bag_scroll := ScrollContainer.new()
-	bag_scroll.custom_minimum_size = Vector2(0, 210)
+	bag_scroll.custom_minimum_size = Vector2(0, _scaled(286.0))
 	bag_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	bag_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	lower_vbox.add_child(bag_scroll)
@@ -291,7 +337,7 @@ func _build_synthesis_ui(parent: Control) -> void:
 	result_wrap.alignment = BoxContainer.ALIGNMENT_CENTER
 	top_vbox.add_child(result_wrap)
 
-	_synth_result_slot = _create_synth_slot_button(SYNTH_RESULT_SLOT_SIZE)
+	_synth_result_slot = _create_synth_slot_button(_synth_result_slot_size())
 	_synth_result_slot.disabled = true
 	result_wrap.add_child(_synth_result_slot)
 
@@ -302,7 +348,7 @@ func _build_synthesis_ui(parent: Control) -> void:
 
 	_synth_material_slots.clear()
 	for i in range(SYNTH_SLOT_COUNT):
-		var slot_btn := _create_synth_slot_button(SYNTH_MATERIAL_SLOT_SIZE)
+		var slot_btn := _create_synth_slot_button(_synth_material_slot_size())
 		slot_btn.pressed.connect(_on_synth_material_slot_pressed.bind(i))
 		material_row.add_child(slot_btn)
 		_synth_material_slots.append(slot_btn)
@@ -324,7 +370,7 @@ func _build_synthesis_ui(parent: Control) -> void:
 	mid_margin.add_child(mid_center)
 
 	_synth_compose_button = Button.new()
-	_synth_compose_button.custom_minimum_size = Vector2(170, 46)
+	_synth_compose_button.custom_minimum_size = Vector2(_scaled(170.0), _scaled(46.0))
 	_synth_compose_button.text = "合成"
 	_synth_compose_button.pressed.connect(_on_synth_compose_pressed)
 	mid_center.add_child(_synth_compose_button)
@@ -348,7 +394,7 @@ func _build_synthesis_ui(parent: Control) -> void:
 	bag_vbox.add_child(bag_title)
 
 	var bag_scroll := ScrollContainer.new()
-	bag_scroll.custom_minimum_size = Vector2(0, 220)
+	bag_scroll.custom_minimum_size = Vector2(0, _scaled(220.0))
 	bag_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	bag_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	bag_vbox.add_child(bag_scroll)
@@ -370,7 +416,7 @@ func _build_synthesis_ui(parent: Control) -> void:
 	_synthesis_root.add_child(bottom_row)
 	var back_btn := Button.new()
 	back_btn.text = "返回"
-	back_btn.custom_minimum_size = Vector2(130, 40)
+	back_btn.custom_minimum_size = Vector2(_scaled(130.0), _scaled(40.0))
 	back_btn.pressed.connect(_close_synthesis_view)
 	bottom_row.add_child(back_btn)
 
@@ -600,13 +646,23 @@ func _close_synthesis_view() -> void:
 	_refresh_all()
 
 
+func _main_menu_bottom_bar_height() -> float:
+	var bottom_bar := get_node_or_null("../../BottomBar") as Control
+	if bottom_bar == null:
+		return _scaled(168.0)
+	var h := bottom_bar.size.y
+	if h > 0.0:
+		return h
+	return maxf(bottom_bar.custom_minimum_size.y, _scaled(168.0))
+
+
 func _set_main_menu_tabs_visible(visible: bool) -> void:
 	var bottom_bar := get_node_or_null("../../BottomBar") as Control
 	if bottom_bar != null:
 		bottom_bar.visible = visible
 	var content := get_parent() as Control
 	if content != null:
-		content.offset_bottom = -88.0 if visible else 0.0
+		content.offset_bottom = -_main_menu_bottom_bar_height() if visible else 0.0
 
 
 func _on_equipment_changed() -> void:
@@ -670,7 +726,7 @@ func _refresh_inventory() -> void:
 	for item in inventory:
 		var uid := int(item.get("uid", -1))
 		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(106, 74)
+		btn.custom_minimum_size = _inventory_button_size()
 		btn.icon = _get_item_icon(item)
 		btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -841,7 +897,7 @@ func _refresh_synthesis_slots() -> void:
 					LobbyState.get_item_name(item),
 					int(item.get("level", 1)),
 				],
-				SYNTH_MATERIAL_SLOT_SIZE
+				_synth_material_slot_size()
 			)
 			continue
 		if _has_synth_target():
@@ -850,18 +906,18 @@ func _refresh_synthesis_slots() -> void:
 			}
 			slot_btn.icon = _get_item_icon(ghost_item)
 			slot_btn.modulate = Color(1, 1, 1, 0.35)
-			_apply_button_text_fit(slot_btn, "需要同款同品质", SYNTH_MATERIAL_SLOT_SIZE)
+			_apply_button_text_fit(slot_btn, "需要同款同品质", _synth_material_slot_size())
 		else:
 			slot_btn.icon = null
 			slot_btn.modulate = Color(1, 1, 1, 1)
-			_apply_button_text_fit(slot_btn, "素材槽", SYNTH_MATERIAL_SLOT_SIZE)
+			_apply_button_text_fit(slot_btn, "素材槽", _synth_material_slot_size())
 
 
 func _refresh_synthesis_result_slot() -> void:
 	if _synth_result_preview.is_empty():
 		_synth_result_slot.icon = null
 		_synth_result_slot.modulate = Color(1, 1, 1, 1)
-		_apply_button_text_fit(_synth_result_slot, "合成结果", SYNTH_RESULT_SLOT_SIZE)
+		_apply_button_text_fit(_synth_result_slot, "合成结果", _synth_result_slot_size())
 		return
 	_synth_result_slot.icon = _get_item_icon(_synth_result_preview)
 	_synth_result_slot.modulate = LobbyState.get_quality_color(int(_synth_result_preview.get("quality", 0)))
@@ -871,7 +927,7 @@ func _refresh_synthesis_result_slot() -> void:
 			LobbyState.get_item_name(_synth_result_preview),
 			int(_synth_result_preview.get("level", 1)),
 		],
-		SYNTH_RESULT_SLOT_SIZE
+		_synth_result_slot_size()
 	)
 
 
@@ -898,7 +954,7 @@ func _refresh_synthesis_bag() -> void:
 		]
 		if already_selected:
 			label_text = "已放入\nLv.%d" % int(item.get("level", 1))
-		_apply_button_text_fit(btn, label_text, SYNTH_BAG_BUTTON_SIZE)
+		_apply_button_text_fit(btn, label_text, _synth_bag_button_size())
 		var compatible := has_empty_slot and (not already_selected) and _is_item_compatible_for_current_target(item)
 		if compatible:
 			btn.modulate = LobbyState.get_quality_color(quality)

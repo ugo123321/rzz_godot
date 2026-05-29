@@ -26,7 +26,7 @@
   },
   {
     "key": "attack_speed",
-    "value": 2300,
+    "value": 2850,
     "description": "路径冲刺速度 px/s"
   },
   {
@@ -36,7 +36,7 @@
   },
   {
     "key": "hitbox_radius",
-    "value": 12,
+    "value": 22,
     "description": "碰撞半径"
   },
   {
@@ -46,7 +46,7 @@
   },
   {
     "key": "trigger_radius_min",
-    "value": 30,
+    "value": 55,
     "description": "触发圈最小半径"
   },
   {
@@ -106,7 +106,7 @@
   },
   {
     "key": "sprite_scale",
-    "value": 2,
+    "value": 3.7,
     "description": "显示缩放(100px素材，2=200px显示)"
   },
   {

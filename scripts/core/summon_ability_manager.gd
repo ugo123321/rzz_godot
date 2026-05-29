@@ -102,11 +102,11 @@ func _fx_on_layer(item: Dictionary, below_monsters: bool) -> bool:
 
 
 func _play_bottom() -> float:
-	return float(GameConfig.get_tuning("logical_height", 700))
+	return float(GameConfig.get_tuning("logical_height", 1280))
 
 
 func _play_width() -> float:
-	return float(GameConfig.get_tuning("logical_width", 390))
+	return float(GameConfig.get_tuning("logical_width", 720))
 
 
 func _get_pet_count_multiplier(player: BattlePlayer) -> int:
@@ -171,7 +171,7 @@ func _summon_aoe_damage(center: Vector2, radius: float, damage: int, color: Colo
 func _anchor_near_player(player: BattlePlayer, index: int, total: int, dist_mul: float) -> Vector2:
 	var base := float(index) / float(maxi(1, total)) * TAU
 	var orbit := Time.get_ticks_msec() * 0.001 + base
-	var r := player.get_effective_radius() + 36.0 + dist_mul
+	var r := player.get_effective_radius() + GameConfig.scale_world(36.0) + dist_mul
 	return Vector2(
 		player.home_position.x + cos(orbit) * r,
 		player.home_position.y + sin(orbit) * r * 0.85
@@ -184,13 +184,13 @@ func _spawn_pet_world_pos(player: BattlePlayer, index: int, total: int, scatter_
 	if scatter_in_field:
 		return Vector2(
 			MathUtils.rand_range(40.0, w - 40.0),
-			MathUtils.rand_range(PLAY_TOP + 30.0, bottom - 30.0)
+			MathUtils.rand_range(PLAY_TOP + GameConfig.scale_world(30.0), bottom - GameConfig.scale_world(30.0))
 		)
 	var spread := float(index) / float(maxi(1, total)) * TAU + MathUtils.rand_range(-0.35, 0.35)
 	var r := MathUtils.rand_range(55.0, 95.0 + float(index) * 14.0)
 	return Vector2(
 		clampf(player.home_position.x + cos(spread) * r, 30.0, w - 30.0),
-		clampf(player.home_position.y + sin(spread) * r * 0.85, PLAY_TOP + 24.0, bottom - 24.0)
+		clampf(player.home_position.y + sin(spread) * r * 0.85, PLAY_TOP + GameConfig.scale_world(24.0), bottom - GameConfig.scale_world(24.0))
 	)
 
 
@@ -281,13 +281,13 @@ func _spawn_thunder_strikes(player: BattlePlayer, monsters: Array) -> void:
 				MathUtils.rand_range(-60.0, 60.0)
 			)
 		target.x = clampf(target.x, 30.0, w - 30.0)
-		target.y = clampf(target.y, PLAY_TOP + 20.0, bottom - 20.0)
+		target.y = clampf(target.y, PLAY_TOP + GameConfig.scale_world(20.0), bottom - GameConfig.scale_world(20.0))
 		var dmg_mult := float(cfg.dmg_mult) * (1.0 + float(maxi(0, lv - 1)) * 0.06)
 		thunder_bolts.append(_with_upgrade_fx_layer({
 			"pos": target,
 			"phase": "warn",
 			"timer": float(cfg.warn_time),
-			"radius": (float(cfg.radius) + float(lv) * 4.0) * FX_SCALE,
+			"radius": GameConfig.scale_world(float(cfg.radius) + float(lv) * 4.0) * FX_SCALE,
 			"damage": player.get_ability_damage(dmg_mult),
 			"sky_y": float(cfg.sky_y),
 			"bolt_points": null,
@@ -341,7 +341,7 @@ func _update_thunder(delta: float, player: BattlePlayer, monsters: Array) -> voi
 								battle.particles.emit_particle(
 									t.pos.x, t.pos.y,
 									cos(a) * sp, sin(a) * sp,
-									randf_range(0.2, 0.45), randf_range(6.0, 12.0) * FX_SCALE,
+									randf_range(0.2, 0.45), randf_range(6.0, 12.0) * FX_SCALE * GameConfig.get_world_scale(),
 									Color("#ffe878"), 90.0, true, true
 								)
 			"explode":
@@ -515,7 +515,7 @@ func _update_companions(delta: float, player: BattlePlayer, monsters: Array) -> 
 		var cfg := WOLF_CFG if str(c.type) == "wolf" else (BULL_CFG if str(c.type) == "bull" else GOD_CFG)
 		c.damage = _companion_damage(player, cfg, int(c.lv))
 		c.pos.x = clampf(c.pos.x, 20.0, w - 20.0)
-		c.pos.y = clampf(c.pos.y, PLAY_TOP + 16.0, bottom - 16.0)
+		c.pos.y = clampf(c.pos.y, PLAY_TOP + GameConfig.scale_world(16.0), bottom - GameConfig.scale_world(16.0))
 		if freeze_wolf_bull and str(c.type) in ["wolf", "bull"]:
 			continue
 		match str(c.type):
@@ -680,12 +680,12 @@ func _draw_thunder(canvas: Node2D, below_monsters: bool) -> void:
 					var bolt_prog := clampf(1.0 - float(t.timer) / bolt_dur, 0.0, 1.0)
 					var vis_count := maxi(2, int(floor(float(t.bolt_points.size()) * bolt_prog)))
 					var vis_pts: Array = t.bolt_points.slice(0, vis_count)
-					_draw_thunder_bolt_path(canvas, vis_pts, 0.95, 9.0 * FX_SCALE)
+					_draw_thunder_bolt_path(canvas, vis_pts, 0.95, GameConfig.scale_world(9.0) * FX_SCALE)
 					if bolt_prog >= 0.95:
-						canvas.draw_circle(Vector2(cx, cy) + offset, 28.0 * FX_SCALE, Color(1.0, 1.0, 1.0, 0.9))
+						canvas.draw_circle(Vector2(cx, cy) + offset, GameConfig.scale_world(28.0) * FX_SCALE, Color(1.0, 1.0, 1.0, 0.9))
 			"explode":
 				if t.bolt_points:
-					_draw_thunder_bolt_path(canvas, t.bolt_points, 0.35, 5.0 * FX_SCALE)
+					_draw_thunder_bolt_path(canvas, t.bolt_points, 0.35, GameConfig.scale_world(5.0) * FX_SCALE)
 				_draw_thunder_explosion(canvas, t)
 
 

@@ -131,8 +131,8 @@ func _ready() -> void:
 	blood_stains.name = "BloodStains"
 	blood_stains.z_index = -4
 	add_child(blood_stains)
-	var blood_world_w := float(GameConfig.get_tuning("logical_width", 390))
-	var blood_world_h := float(GameConfig.get_tuning("logical_height", 700))
+	var blood_world_w := float(GameConfig.get_tuning("logical_width", 720))
+	var blood_world_h := float(GameConfig.get_tuning("logical_height", 1280))
 	blood_stains.configure(blood_world_w, blood_world_h)
 	ground_effects = GroundEffectManagerScript.new()
 	ground_effects.name = "GroundEffects"
@@ -199,12 +199,13 @@ func _ready() -> void:
 
 
 func _setup_viewport() -> void:
-	var w := int(GameConfig.get_tuning("logical_width", 390))
-	var h := int(GameConfig.get_tuning("logical_height", 700))
+	var w := int(GameConfig.get_tuning("logical_width", 720))
+	var h := int(GameConfig.get_tuning("logical_height", 1280))
 	dim_overlay.size = Vector2(w, h)
 	dim_overlay.visible = false
 	var zoom := maxf(1.0, round(float(GameConfig.get_tuning("camera_zoom", 1.0))))
 	camera.zoom = Vector2.ONE * zoom
+	camera.position = Vector2(w * 0.5, h * 0.5)
 	player.global_position = Vector2(w * 0.5, h * 0.58)
 	player.home_position = player.global_position
 
@@ -396,8 +397,8 @@ func _sync_background_layer() -> void:
 func _refresh_stage_ambience() -> void:
 	if grass_field == null:
 		return
-	var w := float(GameConfig.get_tuning("logical_width", 390))
-	var h := float(GameConfig.get_tuning("logical_height", 700))
+	var w := float(GameConfig.get_tuning("logical_width", 720))
+	var h := float(GameConfig.get_tuning("logical_height", 1280))
 	var play_bottom := PixelUiHelper.get_play_area_bottom(h)
 	grass_field.init_field(w, h, play_bottom, _get_safe_zone())
 
@@ -413,8 +414,8 @@ func _get_safe_zone() -> Dictionary:
 
 
 func _update_ambience(delta: float) -> void:
-	var w := float(GameConfig.get_tuning("logical_width", 390))
-	var h := float(GameConfig.get_tuning("logical_height", 700))
+	var w := float(GameConfig.get_tuning("logical_width", 720))
+	var h := float(GameConfig.get_tuning("logical_height", 1280))
 	if grass_field:
 		grass_field.update_field(delta)
 	if sakura_field:
@@ -1017,8 +1018,8 @@ func screen_to_world(screen_pos: Vector2) -> Vector2:
 
 
 func is_in_bounds(pos: Vector2) -> bool:
-	var w := float(GameConfig.get_tuning("logical_width", 390))
-	var h := float(GameConfig.get_tuning("logical_height", 700))
+	var w := float(GameConfig.get_tuning("logical_width", 720))
+	var h := float(GameConfig.get_tuning("logical_height", 1280))
 	return pos.x >= 0 and pos.y >= 0 and pos.x <= w and pos.y <= h
 
 

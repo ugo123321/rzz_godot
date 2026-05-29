@@ -4,12 +4,12 @@ class_name AbilityManager
 const EffectHelperScript = preload("res://scripts/utils/effect_helper.gd")
 const FX_SCALE := 1.75
 const PROJ_DRAW_SCALE := 0.72
-const AUTO_BULLET_DRAW_SCALE := 0.78
-const AUTO_BULLET_SPAWN_OFFSET := 18.0
+const AUTO_BULLET_DRAW_SCALE := 0.95
+const AUTO_BULLET_SPAWN_OFFSET := 8.0
 const AUTO_BULLET_FAN_SPREAD := 0.16
 const AUTO_HIT_VISUAL_PAD := 10.0
-const AUTO_HIT_FX_SCALE := 1.0
-const HIT_FX_DRAW_SCALE := 0.62
+const AUTO_HIT_FX_SCALE := 1.3
+const HIT_FX_DRAW_SCALE := 0.78
 const ABYSS_EXPLOSION_DAMAGE_FRAME := 5
 const SHURIKEN_PIXEL := 4
 const SHURIKEN_PIXELS: Array = [
@@ -83,16 +83,16 @@ func _fx_on_layer(item: Dictionary, below_monsters: bool) -> bool:
 func _skill_burst(pos: Vector2, shake_mag: float, shake_dur: float, color: Color, count: int = 14) -> void:
 	if battle == null:
 		return
-	battle.shake_camera(shake_mag * FX_SCALE, shake_dur)
+	battle.shake_camera(shake_mag * FX_SCALE * GameConfig.get_world_scale(), shake_dur)
 	if battle.particles == null:
 		return
 	for i in range(count):
 		var a := randf() * TAU
-		var speed := randf_range(90.0, 240.0) * FX_SCALE
+		var speed := randf_range(90.0, 240.0) * FX_SCALE * GameConfig.get_world_scale()
 		battle.particles.emit_particle(
 			pos.x, pos.y,
 			cos(a) * speed, sin(a) * speed,
-			randf_range(0.18, 0.42), randf_range(5.0, 11.0) * FX_SCALE,
+			randf_range(0.18, 0.42), randf_range(5.0, 11.0) * FX_SCALE * GameConfig.get_world_scale(),
 			color, randf_range(60.0, 120.0), true, true
 		)
 
@@ -105,7 +105,7 @@ func _draw_water_tornado(canvas: Node2D, t: Dictionary, life_t: float) -> void:
 		return
 	var alpha := 0.55 + life_t * 0.45
 	var size := tex.get_size()
-	var draw_r := 60.0 * FX_SCALE
+	var draw_r := 60.0 * FX_SCALE * GameConfig.get_world_scale()
 	var draw_scale := (draw_r * 2.2) / maxf(size.x, size.y)
 	var draw_size := size * draw_scale
 	var local_pos: Vector2 = Vector2(t.pos) - canvas.global_position
@@ -150,7 +150,7 @@ func _draw_sprite_fx(
 	var tex := EffectHelperScript.projectile_frame_texture(frames, spin)
 	if tex == null:
 		return
-	var draw_scale := PROJ_DRAW_SCALE * scale_mul * FX_SCALE
+	var draw_scale := PROJ_DRAW_SCALE * scale_mul * FX_SCALE * GameConfig.get_world_scale()
 	var local_pos: Vector2 = world_pos - canvas.global_position
 	SpriteHelper.draw_effect_texture(
 		canvas,
@@ -305,7 +305,7 @@ func _try_spawn_laser_blast(player: BattlePlayer, monsters: Array) -> void:
 	var ang := _nearest_monster_angle(spawn_pos, -PI * 0.5, monsters)
 	var dir := Vector2(cos(ang), sin(ang))
 	var exit_dist := _ray_playfield_exit_distance(spawn_pos, dir)
-	var beam_length := exit_dist + 72.0 * FX_SCALE
+	var beam_length := exit_dist + GameConfig.scale_world(72.0) * FX_SCALE
 	lasers.append(_with_upgrade_fx_layer({
 		"kind": "laser",
 		"tail": spawn_pos,
@@ -325,8 +325,8 @@ func _is_out_of_playfield(pos: Vector2) -> bool:
 
 
 func _ray_playfield_exit_distance(origin: Vector2, dir: Vector2) -> float:
-	var w := float(GameConfig.get_tuning("logical_width", 390))
-	var h := float(GameConfig.get_tuning("logical_height", 700))
+	var w := float(GameConfig.get_tuning("logical_width", 720))
+	var h := float(GameConfig.get_tuning("logical_height", 1280))
 	var best := INF
 	if absf(dir.x) > 0.0001:
 		if dir.x > 0.0:
@@ -476,7 +476,7 @@ func _update_auto_bullets(delta: float, player: BattlePlayer, monsters: Array) -
 
 func _spawn_bullet_from_angle(player: BattlePlayer, ang: float, damage: int, is_spirit: bool, visual_scale: float) -> void:
 	var dir := Vector2(cos(ang), sin(ang))
-	var spawn_pos := player.global_position + dir * (player.get_effective_radius() + AUTO_BULLET_SPAWN_OFFSET)
+	var spawn_pos := player.global_position + dir * (player.get_effective_radius() + GameConfig.scale_world(AUTO_BULLET_SPAWN_OFFSET))
 	var max_life := float(GameConfig.get_player_value("auto_bullet_life", 0.9))
 	if player.has_pierce_bullet():
 		max_life *= float(GameConfig.get_player_value("auto_bullet_pierce_range_mul", 0.85))
@@ -492,7 +492,6 @@ func _spawn_bullet_from_angle(player: BattlePlayer, ang: float, damage: int, is_
 		"rot": ang,
 		"anim_t": 0.0,
 		"visual_scale": visual_scale,
-		"spawn_scale": visual_scale,
 		"is_spirit": is_spirit,
 		"bounces_left": player.get_bounce_bullet_count(),
 		"returning": false,
@@ -562,7 +561,7 @@ func _spawn_black_hole(pos: Vector2, player: BattlePlayer) -> void:
 	black_holes.append(_with_upgrade_fx_layer({
 		"kind": "black_hole",
 		"pos": pos,
-		"radius": (49.2 + float(lv) * 24.0) * FX_SCALE,
+		"radius": GameConfig.scale_world(49.2 + float(lv) * 24.0) * FX_SCALE,
 		"life": 1.9,
 		"max_life": 1.9,
 		"anim_t": 0.0,
@@ -576,7 +575,7 @@ func _spawn_black_hole(pos: Vector2, player: BattlePlayer) -> void:
 
 func _spawn_whirl(pos: Vector2, player: BattlePlayer) -> void:
 	var lv := player.get_upgrade_level("blade_whirl")
-	var base_r := (68.0 + float(lv) * 8.0) * 1.12 * FX_SCALE
+	var base_r := GameConfig.scale_world((68.0 + float(lv) * 8.0) * 1.12) * FX_SCALE
 	whirls.append(_with_upgrade_fx_layer({
 		"kind": "whirl",
 		"pos": pos,
@@ -1019,7 +1018,7 @@ func _draw_animated_projectile(
 	var tex := EffectHelperScript.animation_frame_texture(frames, anim_t)
 	if tex == null:
 		return
-	var draw_scale := PROJ_DRAW_SCALE * scale_mul * FX_SCALE
+	var draw_scale := PROJ_DRAW_SCALE * scale_mul * FX_SCALE * GameConfig.get_world_scale()
 	var local_pos: Vector2 = world_pos - canvas.global_position
 	SpriteHelper.draw_effect_texture(
 		canvas,
@@ -1036,11 +1035,6 @@ func _draw_auto_bullet(canvas: Node2D, s: Dictionary) -> void:
 	if bool(s.get("is_spirit", false)):
 		frames = _spirit_frames
 	var draw_scale := float(s.get("visual_scale", 1.0)) * AUTO_BULLET_DRAW_SCALE
-	var spawn_scale := float(s.get("spawn_scale", draw_scale))
-	var travel := _auto_travel_distance(s)
-	var max_range := maxf(24.0, _auto_pierce_max_range(s))
-	var shrink_t := clampf(travel / max_range, 0.0, 1.0)
-	draw_scale = lerpf(spawn_scale, draw_scale * 0.66, shrink_t)
 	if bool(s.get("is_spirit", false)):
 		draw_scale *= 1.15
 	var max_life := float(s.get("max_life", GameConfig.get_player_value("auto_bullet_life", 0.9)))
@@ -1057,7 +1051,7 @@ func _draw_auto_bullet(canvas: Node2D, s: Dictionary) -> void:
 		float(s.get("anim_t", 0.0)),
 		modulate.a
 	)
-	var glow_r := 12.0 * FX_SCALE * draw_scale * PROJ_DRAW_SCALE
+	var glow_r := GameConfig.scale_world(12.0) * FX_SCALE * draw_scale * PROJ_DRAW_SCALE
 	var local: Vector2 = Vector2(s.pos) - canvas.global_position
 	var glow_col := Color(1.0, 0.42, 0.1, 0.22 * life_t)
 	if bool(s.get("returning", false)):
@@ -1106,16 +1100,16 @@ func _draw_laser(canvas: Node2D, s: Dictionary) -> void:
 	var head := _laser_head(s) - canvas.global_position
 	var origin: Vector2 = Vector2(s.get("origin", s.tail)) - canvas.global_position
 	var dir := Vector2(s.get("dir", Vector2.RIGHT)).normalized()
-	var tip := head + dir * 12.0 * FX_SCALE
-	canvas.draw_line(tail, tip, Color(1.0, 0.28, 0.82, 0.42), 22.0 * FX_SCALE)
-	canvas.draw_line(tail, tip, Color(1.0, 0.72, 1.0, 0.95), 9.0 * FX_SCALE)
-	canvas.draw_line(tail, tip, Color(1.0, 1.0, 1.0, 0.88), 3.5 * FX_SCALE)
+	var tip := head + dir * GameConfig.scale_world(12.0) * FX_SCALE
+	canvas.draw_line(tail, tip, Color(1.0, 0.28, 0.82, 0.42), GameConfig.scale_world(22.0) * FX_SCALE)
+	canvas.draw_line(tail, tip, Color(1.0, 0.72, 1.0, 0.95), GameConfig.scale_world(9.0) * FX_SCALE)
+	canvas.draw_line(tail, tip, Color(1.0, 1.0, 1.0, 0.88), GameConfig.scale_world(3.5) * FX_SCALE)
 	for i in range(7):
 		var t := float(i) / 6.0
 		var p := tail.lerp(tip, t)
 		canvas.draw_rect(Rect2(p.x - 3.0, p.y - 3.0, 6.0, 6.0), Color(1.0, 1.0, 1.0, 0.75))
-	canvas.draw_circle(origin, 7.0 * FX_SCALE, Color(1.0, 0.55, 1.0, 0.55))
-	canvas.draw_circle(head, 5.0 * FX_SCALE, Color(1.0, 1.0, 1.0, 0.9))
+	canvas.draw_circle(origin, GameConfig.scale_world(7.0) * FX_SCALE, Color(1.0, 0.55, 1.0, 0.55))
+	canvas.draw_circle(head, GameConfig.scale_world(5.0) * FX_SCALE, Color(1.0, 1.0, 1.0, 0.9))
 
 
 func _draw_abyss_explosion(canvas: Node2D, fx: Dictionary) -> void:

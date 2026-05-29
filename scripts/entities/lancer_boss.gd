@@ -69,8 +69,8 @@ func setup(battle_node, p_stage_index: int) -> void:
 	battle = battle_node
 	stage_index = p_stage_index
 	cfg = GameConfig.bosses.get("lancer_knight", {})
-	logical_w = float(GameConfig.get_tuning("logical_width", 390))
-	logical_h = float(GameConfig.get_tuning("logical_height", 700))
+	logical_w = float(GameConfig.get_tuning("logical_width", 720))
+	logical_h = float(GameConfig.get_tuning("logical_height", 1280))
 	play_top = 88.0
 	play_bottom = logical_h - 120.0
 	hitbox_radius = float(cfg.get("hitbox_radius", 14))

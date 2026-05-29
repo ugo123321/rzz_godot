@@ -138,7 +138,8 @@ static func _draw_ki_ready_glow(canvas: CanvasItem, rect: Rect2, ratio: float) -
 
 
 static func _fit_bar_rect(x: float, y: float, width: float, height: float) -> Rect2:
-	var bar_h := minf(BAR_VISUAL_HEIGHT, height)
+	var ui_scale := GameConfig.get_resolution_scale() * GameConfig.get_ui_scale()
+	var bar_h := minf(BAR_VISUAL_HEIGHT * ui_scale, height)
 	var bar_y := y + (height - bar_h) * 0.5
 	return Rect2(x, bar_y, width, bar_h)
 
@@ -177,20 +178,21 @@ static func draw_exp_bar(
 	exp_value: int,
 	exp_to_next: int
 ) -> void:
-	var pad := 10.0
+	var ui_scale := GameConfig.get_resolution_scale() * GameConfig.get_ui_scale()
+	var pad := 10.0 * ui_scale
 	var w := viewport_size.x - pad * 2.0
-	var rect := _fit_bar_rect(pad, viewport_size.y - BAR_VISUAL_HEIGHT - pad, w, BAR_VISUAL_HEIGHT)
+	var rect := _fit_bar_rect(pad, viewport_size.y - BAR_VISUAL_HEIGHT * ui_scale - pad, w, BAR_VISUAL_HEIGHT * ui_scale)
 	var ratio := clampf(float(exp_value) / maxf(1.0, float(exp_to_next)), 0.0, 1.0)
 	draw_horizontal_bar(canvas, rect, ratio, BAR_FILL_EXP_REGION)
 
-	var font_size := 11
+	var font_size := PixelUiHelper.snap_pixel_font_size(int(round(11.0 * ui_scale)))
 	var cy := rect.position.y + rect.size.y * 0.5
 	PixelUiHelper.draw_pixel_text(
-		canvas, "Lv%d" % level, Vector2(pad + 8.0, cy), font_size,
+		canvas, "Lv%d" % level, Vector2(pad + 8.0 * ui_scale, cy), font_size,
 		Color("#ffe8a8"), HORIZONTAL_ALIGNMENT_LEFT
 	)
 	PixelUiHelper.draw_pixel_text(
-		canvas, "%d / %d" % [exp_value, exp_to_next], Vector2(pad + w - 8.0, cy),
+		canvas, "%d / %d" % [exp_value, exp_to_next], Vector2(pad + w - 8.0 * ui_scale, cy),
 		font_size, Color("#e8f0d8"), HORIZONTAL_ALIGNMENT_RIGHT
 	)
 
@@ -219,7 +221,9 @@ static func make_pause_button_texture() -> Texture2D:
 	var key := "pause_button_pixel_v2"
 	if _cache.has(key):
 		return _cache[key]
-	var image := Image.create(18, 18, false, Image.FORMAT_RGBA8)
+	var ui_scale := GameConfig.get_resolution_scale() * GameConfig.get_ui_scale()
+	var size_px := maxi(18, int(round(18.0 * ui_scale)))
+	var image := Image.create(size_px, size_px, false, Image.FORMAT_RGBA8)
 	image.fill(Color(0, 0, 0, 0))
 	var border_dark := Color("#1f2430")
 	var border_mid := Color("#4a566c")
@@ -227,30 +231,41 @@ static func make_pause_button_texture() -> Texture2D:
 	var panel_hi := Color("#6f7d97")
 	var bar_col := Color("#d6e2ff")
 	var shadow_col := Color("#0f1420")
-	for y in range(1, 17):
-		for x in range(1, 17):
+	var inner_max := size_px - 2
+	for y in range(1, inner_max + 1):
+		for x in range(1, inner_max + 1):
 			image.set_pixel(x, y, panel_fill)
-	for x in range(1, 17):
+	for x in range(1, inner_max + 1):
 		image.set_pixel(x, 1, border_dark)
-		image.set_pixel(x, 16, border_dark)
-	for y in range(1, 17):
+		image.set_pixel(x, inner_max, border_dark)
+	for y in range(1, inner_max + 1):
 		image.set_pixel(1, y, border_dark)
-		image.set_pixel(16, y, border_dark)
-	for x in range(2, 16):
+		image.set_pixel(inner_max, y, border_dark)
+	for x in range(2, inner_max):
 		image.set_pixel(x, 2, panel_hi)
-	for y in range(2, 16):
+	for y in range(2, inner_max):
 		image.set_pixel(2, y, panel_hi)
-	for x in range(2, 16):
-		image.set_pixel(x, 15, border_mid)
-	for y in range(2, 16):
-		image.set_pixel(15, y, border_mid)
-	for y in range(4, 14):
-		image.set_pixel(6, y, bar_col)
-		image.set_pixel(7, y, bar_col)
-		image.set_pixel(11, y, bar_col)
-		image.set_pixel(12, y, bar_col)
-		image.set_pixel(8, y, shadow_col)
-		image.set_pixel(13, y, shadow_col)
+	for x in range(2, inner_max):
+		image.set_pixel(x, inner_max - 1, border_mid)
+	for y in range(2, inner_max):
+		image.set_pixel(inner_max - 1, y, border_mid)
+	var bar_x1 := int(round(size_px * 0.33))
+	var bar_x2 := bar_x1 + 1
+	var bar_x3 := int(round(size_px * 0.62))
+	var bar_x4 := bar_x3 + 1
+	var shadow_x1 := bar_x2 + 1
+	var shadow_x2 := bar_x4 + 1
+	var bar_top := int(round(size_px * 0.22))
+	var bar_bottom := int(round(size_px * 0.78))
+	for y in range(bar_top, bar_bottom):
+		image.set_pixel(bar_x1, y, bar_col)
+		image.set_pixel(bar_x2, y, bar_col)
+		image.set_pixel(bar_x3, y, bar_col)
+		image.set_pixel(bar_x4, y, bar_col)
+		if shadow_x1 < size_px:
+			image.set_pixel(shadow_x1, y, shadow_col)
+		if shadow_x2 < size_px:
+			image.set_pixel(shadow_x2, y, shadow_col)
 	var tex := ImageTexture.create_from_image(image)
 	_cache[key] = tex
 	return tex

@@ -11,6 +11,8 @@ const PATH_LINE_COLOR := Color(1.0, 0.85, 0.2, 0.9)
 const PATH_LINE_COLOR_ATTACK := Color(1.0, 0.85, 0.2, 0.35)
 const PATH_HIT_PAD_RATIO := 0.68
 const DRAW_START_FX_SCALE := 1.3
+const TRIGGER_RING_VISUAL_SCALE := 0.6
+const HP_BAR_Y_OFFSET := 8
 
 var home_position: Vector2
 var state := State.IDLE
@@ -115,7 +117,7 @@ func _ready() -> void:
 	_last_position = global_position
 	_setup_sprite()
 	_update_trigger_radius()
-	path_line.width = PATH_LINE_WIDTH
+	path_line.width = GameConfig.scale_world(PATH_LINE_WIDTH)
 	path_line.default_color = PATH_LINE_COLOR
 	path_line.top_level = true
 
@@ -192,8 +194,8 @@ func apply_config() -> void:
 
 
 func _update_trigger_radius() -> void:
-	var ref_w := float(GameConfig.get_tuning("logical_width", 390))
-	var min_r := float(GameConfig.get_player_value("trigger_radius_min", 30))
+	var ref_w := float(GameConfig.get_tuning("logical_width", 720))
+	var min_r := GameConfig.scale_world(float(GameConfig.get_player_value("trigger_radius_min", 30)))
 	var ratio := float(GameConfig.get_player_value("trigger_radius_ratio", 0.06))
 	var radius := maxf(min_r, ratio * ref_w) * size_scale
 	if trigger_area.get_child_count() > 0:
@@ -203,7 +205,7 @@ func _update_trigger_radius() -> void:
 
 
 func get_effective_radius() -> float:
-	return float(GameConfig.get_player_value("hitbox_radius", 12)) * size_scale
+	return GameConfig.scale_world(float(GameConfig.get_player_value("hitbox_radius", 12))) * size_scale
 
 
 func get_path_hit_pad() -> float:
@@ -211,8 +213,8 @@ func get_path_hit_pad() -> float:
 
 
 func get_trigger_radius() -> float:
-	var ref_w := float(GameConfig.get_tuning("logical_width", 390))
-	var min_r := float(GameConfig.get_player_value("trigger_radius_min", 30))
+	var ref_w := float(GameConfig.get_tuning("logical_width", 720))
+	var min_r := GameConfig.scale_world(float(GameConfig.get_player_value("trigger_radius_min", 30)))
 	var ratio := float(GameConfig.get_player_value("trigger_radius_ratio", 0.06))
 	return maxf(min_r, ratio * ref_w) * size_scale
 
@@ -1350,11 +1352,11 @@ func _draw_hp_bar() -> void:
 	var head_pos := to_local(get_head_top_global_position())
 	PixelUiHelper.draw_compact_hp_bar(
 		self,
-		head_pos + Vector2(0.0, 5.0),
+		head_pos + Vector2(0.0, GameConfig.scale_world(HP_BAR_Y_OFFSET)),
 		hp,
 		max_hp,
-		34.0,
-		6.0,
+		GameConfig.scale_world(28.0),
+		GameConfig.scale_world(5.0),
 		{
 			"border_color": "#122028",
 			"panel_fill": "#101a20",
@@ -1362,7 +1364,7 @@ func _draw_hp_bar() -> void:
 			"empty_b": "#10262f",
 			"fill_color": "#36b88a",
 			"shine_color": "#9cffd4",
-			"segment_count": 10,
+			"segment_count": 8,
 			"segment_gap": 1
 		}
 	)
@@ -1373,7 +1375,7 @@ func _draw_holy_shield() -> void:
 		return
 	var radius := get_effective_radius() + 10.0
 	draw_circle(Vector2.ZERO, radius, Color(0.353, 0.667, 1.0, 0.18))
-	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(0.471, 0.784, 1.0, 0.85), 2.5)
+	_draw_closed_ring(Vector2.ZERO, radius, 64, Color(0.471, 0.784, 1.0, 0.85), 2.5)
 
 
 func _draw_desperate_counter_fx() -> void:
@@ -1381,7 +1383,7 @@ func _draw_desperate_counter_fx() -> void:
 		return
 	var pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() * 0.012)
 	var r := get_effective_radius() + 16.0 + pulse * 3.0
-	draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, Color(1.0, 0.55, 0.28, 0.85), 2.0)
+	_draw_closed_ring(Vector2.ZERO, r, 48, Color(1.0, 0.55, 0.28, 0.85), 2.0)
 	draw_circle(Vector2.ZERO, r * 0.45, Color(1.0, 0.35, 0.25, 0.12))
 
 
@@ -1389,7 +1391,7 @@ func _draw_steadfast_guard_fx() -> void:
 	if not steadfast_active:
 		return
 	var r := get_effective_radius() + 22.0
-	draw_arc(Vector2.ZERO, r, 0.0, TAU, 56, Color(0.4, 0.95, 0.78, 0.9), 2.6)
+	_draw_closed_ring(Vector2.ZERO, r, 56, Color(0.4, 0.95, 0.78, 0.9), 2.6)
 	draw_circle(Vector2.ZERO, r * 0.58, Color(0.26, 0.65, 0.55, 0.12))
 
 
@@ -1398,7 +1400,14 @@ func _draw_stillness_heart_fx() -> void:
 		return
 	var r := get_effective_radius() + 8.0 + float(stillness_stacks) * 1.8
 	var a := 0.28 + minf(0.45, 0.03 * float(stillness_stacks))
-	draw_arc(Vector2.ZERO, r, 0.0, TAU, 64, Color(0.72, 0.9, 1.0, a), 1.8)
+	_draw_closed_ring(Vector2.ZERO, r, 64, Color(0.72, 0.9, 1.0, a), 1.8)
+
+
+func _draw_closed_ring(center: Vector2, radius: float, point_count: int, color: Color, width: float) -> void:
+	# draw_arc at exactly [0, TAU] can show a visible seam at 0 angle on some scales.
+	# Expand a tiny angle on both sides so both caps overlap and hide the gap.
+	var overlap := TAU / maxf(96.0, float(point_count) * 2.0)
+	draw_arc(center, radius, -overlap, TAU + overlap, point_count + 2, color, width)
 
 
 func _draw() -> void:
@@ -1415,5 +1424,18 @@ func _draw() -> void:
 	if ring_alpha <= 0.0:
 		return
 	var radius := get_trigger_radius() * lerpf(0.88, 1.0, ring_alpha)
-	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(1.0, 1.0, 1.0, 0.35 * ring_alpha), 2.0)
-	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(1.0, 0.9, 0.3, 0.12 * ring_alpha), radius * 2.0)
+	var visual_radius := radius * TRIGGER_RING_VISUAL_SCALE
+	_draw_closed_ring(
+		Vector2.ZERO,
+		visual_radius,
+		64,
+		Color(1.0, 1.0, 1.0, 0.35 * ring_alpha),
+		GameConfig.scale_world(2.0)
+	)
+	_draw_closed_ring(
+		Vector2.ZERO,
+		visual_radius,
+		64,
+		Color(1.0, 0.9, 0.3, 0.12 * ring_alpha),
+		visual_radius * 1.3
+	)

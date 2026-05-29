@@ -1,6 +1,10 @@
 extends Node
 
 const CONFIG_DIR := "res://config/json/"
+const BASE_LOGICAL_WIDTH := 390.0
+const BASE_LOGICAL_HEIGHT := 700.0
+const DEFAULT_LOGICAL_WIDTH := 720.0
+const DEFAULT_LOGICAL_HEIGHT := 1280.0
 
 var chapters: Array = []
 var stages: Array = []
@@ -51,6 +55,44 @@ func reload() -> void:
 
 func get_tuning(key: String, default_value = null):
 	return tuning.get(key, default_value)
+
+
+func get_logical_size() -> Vector2:
+	return Vector2(
+		float(get_tuning("logical_width", DEFAULT_LOGICAL_WIDTH)),
+		float(get_tuning("logical_height", DEFAULT_LOGICAL_HEIGHT))
+	)
+
+
+func get_world_scale() -> float:
+	return maxf(0.1, float(get_tuning("world_scale", 1.0)))
+
+
+func get_ui_scale() -> float:
+	return maxf(0.1, float(get_tuning("ui_scale", 1.0)))
+
+
+func get_resolution_scale() -> float:
+	var logical := get_logical_size()
+	var sx := logical.x / BASE_LOGICAL_WIDTH
+	var sy := logical.y / BASE_LOGICAL_HEIGHT
+	return maxf(0.1, minf(sx, sy))
+
+
+## UI 布局比例：以当前 logical 相对设计分辨率 (720x1280) 缩放，避免改分辨率后界面被二次放大。
+func get_ui_layout_scale() -> float:
+	var logical := get_logical_size()
+	var sx := logical.x / DEFAULT_LOGICAL_WIDTH
+	var sy := logical.y / DEFAULT_LOGICAL_HEIGHT
+	return maxf(0.1, minf(sx, sy)) * get_ui_scale()
+
+
+func scale_world(value: float) -> float:
+	return value * get_resolution_scale() * get_world_scale()
+
+
+func scale_ui(value: float) -> float:
+	return value * get_ui_layout_scale()
 
 
 func get_player_value(key: String, default_value = null):
@@ -120,6 +162,8 @@ func scaled_monster_stats(kind_id: String, stage_index: int) -> Dictionary:
 	base["hp"] = int(round(float(base.get("hp", 1)) * scale.hp))
 	base["def"] = int(round(float(base.get("def", 0)) * scale.def))
 	base["attack"] = int(round(float(base.get("attack", 1)) * scale.atk))
+	var speed_mul := maxf(0.1, float(get_tuning("monster_speed_mul", 1.15)))
+	base["speed"] = maxf(1.0, float(base.get("speed", 19)) * speed_mul)
 	return base
 
 

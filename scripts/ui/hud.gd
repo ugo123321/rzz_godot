@@ -24,6 +24,14 @@ var _gold := 0
 var _coin_icon: Texture2D
 
 
+func _ui_scale() -> float:
+	return GameConfig.get_resolution_scale() * GameConfig.get_ui_scale()
+
+
+func _scaled(v: float) -> float:
+	return v * _ui_scale()
+
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -41,7 +49,7 @@ func _ready() -> void:
 func _build_pause_button() -> void:
 	_pause_btn = TextureButton.new()
 	_pause_btn.name = "PauseButton"
-	var btn_size := Vector2(PAUSE_BTN_SIZE, PAUSE_BTN_SIZE)
+	var btn_size := Vector2(_scaled(PAUSE_BTN_SIZE), _scaled(PAUSE_BTN_SIZE))
 	_pause_btn.custom_minimum_size = btn_size
 	_pause_btn.size = btn_size
 	_pause_btn.pivot_offset = btn_size * 0.5
@@ -49,10 +57,10 @@ func _build_pause_button() -> void:
 	_pause_btn.anchor_top = 0.0
 	_pause_btn.anchor_right = 1.0
 	_pause_btn.anchor_bottom = 0.0
-	_pause_btn.offset_left = -PAUSE_BTN_MARGIN - PAUSE_BTN_SIZE
-	_pause_btn.offset_top = PAUSE_BTN_TOP
-	_pause_btn.offset_right = -PAUSE_BTN_MARGIN
-	_pause_btn.offset_bottom = PAUSE_BTN_TOP + PAUSE_BTN_SIZE
+	_pause_btn.offset_left = -_scaled(PAUSE_BTN_MARGIN) - _scaled(PAUSE_BTN_SIZE)
+	_pause_btn.offset_top = _scaled(PAUSE_BTN_TOP)
+	_pause_btn.offset_right = -_scaled(PAUSE_BTN_MARGIN)
+	_pause_btn.offset_bottom = _scaled(PAUSE_BTN_TOP) + _scaled(PAUSE_BTN_SIZE)
 	_pause_btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	_pause_btn.z_index = 50
 	_pause_btn.focus_mode = Control.FOCUS_NONE
@@ -185,8 +193,8 @@ func _draw() -> void:
 	PixelUi.draw_pixel_text(
 		self,
 		_stage_text,
-		Vector2(viewport_size.x * 0.5, 14.0),
-		11,
+		Vector2(viewport_size.x * 0.5, _scaled(14.0)),
+		PixelUi.snap_pixel_font_size(int(round(_scaled(11.0)))),
 		Color("#ffe8c8"),
 		HORIZONTAL_ALIGNMENT_CENTER,
 		VERTICAL_ALIGNMENT_CENTER,
@@ -221,8 +229,8 @@ func _draw() -> void:
 		var msg_alpha := 1.0
 		if not _message_persistent:
 			msg_alpha = clampf(_message_timer / 1.25, 0.0, 1.0)
-		var exp_reserve := 34.0
-		var msg_y := viewport_size.y - exp_reserve - 36.0
+		var exp_reserve := _scaled(34.0)
+		var msg_y := viewport_size.y - exp_reserve - _scaled(36.0)
 		PixelUi.draw_message_panel(self, _message_text, Vector2(viewport_size.x * 0.5, msg_y), msg_alpha)
 
 	# 经验条最后绘制，避免被提示条遮挡
@@ -230,14 +238,14 @@ func _draw() -> void:
 
 
 func _draw_gold_widget() -> void:
-	var icon_rect := Rect2(12.0, 10.0, 18.0, 18.0)
+	var icon_rect := Rect2(_scaled(12.0), _scaled(10.0), _scaled(18.0), _scaled(18.0))
 	if _coin_icon != null:
 		draw_texture_rect(_coin_icon, icon_rect, false)
 	PixelUi.draw_pixel_text(
 		self,
 		str(_gold),
-		Vector2(34.0, 19.0),
-		10,
+		Vector2(_scaled(34.0), _scaled(19.0)),
+		PixelUi.snap_pixel_font_size(int(round(_scaled(10.0)))),
 		Color("#ffe090"),
 		HORIZONTAL_ALIGNMENT_LEFT,
 		VERTICAL_ALIGNMENT_CENTER

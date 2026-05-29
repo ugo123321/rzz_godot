@@ -59,6 +59,14 @@ static func _snap_pos(pos: Vector2) -> Vector2:
 	return Vector2(roundi(pos.x), roundi(pos.y))
 
 
+static func _ui_scale() -> float:
+	return GameConfig.get_resolution_scale() * GameConfig.get_ui_scale()
+
+
+static func _scaled(v: float) -> float:
+	return v * _ui_scale()
+
+
 static func get_font() -> Font:
 	return get_ui_font()
 
@@ -277,8 +285,8 @@ static func get_combo_font_size(combo: int) -> int:
 	if combo < 2:
 		return PIXEL_FONT_BASE * 2
 	var t := clampf(float(combo - 2) / 28.0, 0.0, 1.0)
-	var curved := pow(t, 0.62)
-	var raw := lerpf(16.0, 56.0, curved)
+	var curved := pow(t, 0.7)
+	var raw := lerpf(45.0, 80.0, curved)
 	return snap_pixel_font_size(int(round(raw)))
 
 
@@ -316,7 +324,7 @@ static func get_combo_colors(combo: int) -> Dictionary:
 
 
 static func get_play_area_bottom(viewport_h: float) -> float:
-	return viewport_h - (EXP_BAR_HEIGHT + 14.0)
+	return viewport_h - (_scaled(EXP_BAR_HEIGHT) + _scaled(14.0))
 
 
 static func compute_hud_layout(
@@ -324,15 +332,16 @@ static func compute_hud_layout(
 	player: BattlePlayer,
 	boss: Node = null
 ) -> Dictionary:
-	var pad := 12.0
-	var ki_y := 30.0
-	var ki_h := 22.0
+	var s := _ui_scale()
+	var pad := 12.0 * s
+	var ki_y := 30.0 * s
+	var ki_h := 22.0 * s
 	var show_boss_bar: bool = boss != null and boss.has_method("is_boss_active") and boss.is_boss_active()
-	var boss_bar_h := 22.0 if show_boss_bar else 0.0
-	var boss_bar_y := ki_y + ki_h + 6.0
-	var buff_row_y := boss_bar_y + boss_bar_h + (6.0 if show_boss_bar else 8.0)
+	var boss_bar_h := 22.0 * s if show_boss_bar else 0.0
+	var boss_bar_y := ki_y + ki_h + 6.0 * s
+	var buff_row_y := boss_bar_y + boss_bar_h + ((6.0 if show_boss_bar else 8.0) * s)
 	var has_buffs := player != null and not player.collected_orb_buffs.is_empty()
-	var second_row_y := buff_row_y + (30.0 if has_buffs else 0.0)
+	var second_row_y := buff_row_y + ((30.0 if has_buffs else 0.0) * s)
 	return {
 		"pad": pad,
 		"ki_x": pad,
@@ -344,7 +353,7 @@ static func compute_hud_layout(
 		"show_boss_bar": show_boss_bar,
 		"buff_row_y": buff_row_y,
 		"second_row_y": second_row_y,
-		"combo_y": second_row_y + 8.0,
+		"combo_y": second_row_y + 8.0 * s,
 	}
 
 
@@ -495,7 +504,7 @@ static func draw_boss_hp_bar(canvas: CanvasItem, boss: Node, layout: Dictionary)
 	var w: float = float(layout.get("ki_w", 0.0))
 	var h: float = float(layout.get("boss_bar_h", 0.0))
 	var ratio: float = float(boss.call("get_hp_ratio"))
-	var border := maxi(2, 2)
+	var border := maxi(2, int(round(_scaled(2.0))))
 	draw_pixel_panel(canvas, Rect2(x, y, w, h), Color("#281820"), Color("#c84848"), border)
 	var inner_x := x + border
 	var inner_y := y + border
@@ -509,14 +518,21 @@ static func draw_boss_hp_bar(canvas: CanvasItem, boss: Node, layout: Dictionary)
 			Rect2(inner_x, inner_y, fill_w, maxi(2, int(floor(inner_h * 0.4)))),
 			Color("#ff6868")
 		)
-	draw_pixel_text(canvas, boss.get_display_name(), Vector2(x + 8.0, y + h * 0.5), 9, Color("#ffe0c8"), HORIZONTAL_ALIGNMENT_LEFT)
+	draw_pixel_text(
+		canvas,
+		boss.get_display_name(),
+		Vector2(x + _scaled(8.0), y + h * 0.5),
+		int(round(_scaled(9.0))),
+		Color("#ffe0c8"),
+		HORIZONTAL_ALIGNMENT_LEFT
+	)
 	var boss_hp: int = int(boss.get("hp")) if boss.get("hp") != null else 0
 	var boss_max_hp: int = int(boss.get("max_hp")) if boss.get("max_hp") != null else 1
 	draw_pixel_text(
 		canvas,
 		"%d/%d" % [ceili(boss_hp), boss_max_hp],
-		Vector2(x + w - 8.0, y + h * 0.5),
-		8,
+		Vector2(x + w - _scaled(8.0), y + h * 0.5),
+		int(round(_scaled(8.0))),
 		Color("#ffd0c0"),
 		HORIZONTAL_ALIGNMENT_RIGHT
 	)
@@ -532,23 +548,24 @@ static func draw_turn_buff_icons(canvas: CanvasItem, player: BattlePlayer, layou
 	var types: Array = ["attack", "ki", "combo", "ice"].filter(func(t: String) -> bool: return counts.has(t))
 	if types.is_empty():
 		return
-	var icon_px := maxi(3, 3)
-	var slot_w := icon_px * 8 + 10.0
-	var total_w: float = types.size() * slot_w - 4.0
+	var s := _ui_scale()
+	var icon_px := maxi(3, int(round(3.0 * s)))
+	var slot_w := icon_px * 8 + 10.0 * s
+	var total_w: float = types.size() * slot_w - 4.0 * s
 	var x: float = float(layout.get("ki_x", 0.0)) + float(layout.get("ki_w", 0.0)) * 0.5 - total_w * 0.5
-	var cy: float = float(layout.get("buff_row_y", 0.0)) + 12.0
+	var cy: float = float(layout.get("buff_row_y", 0.0)) + 12.0 * s
 	for type_name in types:
 		var count: int = counts[type_name]
 		var sx := int(floor(x))
-		var sy := int(floor(cy - 12.0))
-		var panel_w := slot_w - 4.0
-		draw_pixel_panel(canvas, Rect2(sx, sy, panel_w, 24.0), Color("#2a2838"), Color("#c8b888"), 2)
-		canvas.draw_rect(Rect2(sx + 3.0, sy + 3.0, panel_w - 6.0, 4.0), buff_frame_color(type_name))
+		var sy := int(floor(cy - 12.0 * s))
+		var panel_w := slot_w - 4.0 * s
+		draw_pixel_panel(canvas, Rect2(sx, sy, panel_w, 24.0 * s), Color("#2a2838"), Color("#c8b888"), maxi(2, int(round(2.0 * s))))
+		canvas.draw_rect(Rect2(sx + 3.0 * s, sy + 3.0 * s, panel_w - 6.0 * s, 4.0 * s), buff_frame_color(type_name))
 		draw_pixel_icon(canvas, get_buff_orb_sprite(type_name), Vector2(x + panel_w * 0.5, cy), icon_px)
 		var label := get_buff_orb_short_label(type_name)
 		if count > 1:
 			label = "%s×%d" % [label, count]
-		draw_pixel_text(canvas, label, Vector2(x + panel_w * 0.5, cy + 14.0), 8, Color("#fff0d0"))
+		draw_pixel_text(canvas, label, Vector2(x + panel_w * 0.5, cy + 14.0 * s), int(round(_scaled(8.0))), Color("#fff0d0"))
 		x += slot_w
 
 
@@ -567,9 +584,10 @@ static func draw_combo_banner(
 	var fade_dur := 0.4
 	var alpha := clampf(player.combo_display_timer / fade_dur, 0.0, 1.0) if fading else 1.0
 	var cx := viewport_w * 0.5
-	var cy := float(layout.get("combo_y", 0.0)) + 28.0
+	var s := _ui_scale()
+	var cy := float(layout.get("combo_y", 0.0)) + 24.0 * s
 	var main_size := get_combo_font_size(combo)
-	var sub_size := snap_pixel_font_size(maxi(PIXEL_FONT_BASE, int(round(float(main_size) * 0.52))))
+	var sub_size := snap_pixel_font_size(maxi(PIXEL_FONT_BASE + 1, int(round(float(main_size) * 0.56))))
 	var colors := get_combo_colors(combo)
 	var punch_scale := 1.0
 	var main_color: Color = colors["main"]
@@ -579,13 +597,13 @@ static func draw_combo_banner(
 	var main_text := "连击×%d" % combo
 	var sub_text := "+%d%%" % player.get_combo_bonus_percent()
 	if combo >= 5:
-		var glow_size := snap_pixel_font_size(int(round(float(main_size) * 1.14)))
+		var glow_size := snap_pixel_font_size(int(round(float(main_size) * 1.1)))
 		var glow_color: Color = colors["glow"]
 		glow_color.a = clampf(0.18 + float(combo - 4) * 0.012, 0.18, 0.52) * alpha
-		draw_message_style_text(canvas, main_text, Vector2(cx, cy - 6.0), glow_size, glow_color)
+		draw_message_style_text(canvas, main_text, Vector2(cx, cy - 4.0 * s), glow_size, glow_color)
 	canvas.draw_set_transform(Vector2(cx, cy), 0.0, Vector2(punch_scale, punch_scale))
-	draw_message_style_text(canvas, main_text, Vector2(0.0, -6.0), main_size, main_color)
-	draw_message_style_text(canvas, sub_text, Vector2(0.0, float(main_size - 2)), sub_size, sub_color)
+	draw_message_style_text(canvas, main_text, Vector2(0.0, -4.0 * s), main_size, main_color)
+	draw_message_style_text(canvas, sub_text, Vector2(0.0, float(main_size - int(round(1.0 * s)))), sub_size, sub_color)
 	canvas.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
@@ -596,13 +614,14 @@ static func draw_exp_bar(
 	exp_value: int,
 	exp_to_next: int
 ) -> void:
-	var h := int(floor(EXP_BAR_HEIGHT))
-	var pad := 12
-	var y := int(floor(viewport_size.y - h - 8.0))
+	var s := _ui_scale()
+	var h := int(floor(_scaled(EXP_BAR_HEIGHT)))
+	var pad := int(round(12.0 * s))
+	var y := int(floor(viewport_size.y - h - 8.0 * s))
 	var w := int(floor(viewport_size.x - pad * 2))
 	var x := pad
-	var border := maxi(2, 3)
-	var block := maxi(3, 4)
+	var border := maxi(2, int(round(3.0 * s)))
+	var block := maxi(3, int(round(4.0 * s)))
 	var inner_x := x + border
 	var inner_y := y + border
 	var inner_w := w - border * 2
@@ -632,12 +651,19 @@ static func draw_exp_bar(
 	canvas.draw_rect(Rect2(x + border, y + h - border - rivet, rivet, rivet), Color("#5a4828"))
 	canvas.draw_rect(Rect2(x + w - border - rivet, y + h - border - rivet, rivet, rivet), Color("#5a4828"))
 
-	draw_pixel_text(canvas, "Lv%d" % level, Vector2(x + 10.0, y + h * 0.5), PIXEL_FONT_BASE, Color("#ffe8a8"), HORIZONTAL_ALIGNMENT_LEFT)
+	draw_pixel_text(
+		canvas,
+		"Lv%d" % level,
+		Vector2(x + 10.0 * s, y + h * 0.5),
+		snap_pixel_font_size(int(round(PIXEL_FONT_BASE * s))),
+		Color("#ffe8a8"),
+		HORIZONTAL_ALIGNMENT_LEFT
+	)
 	draw_pixel_text(
 		canvas,
 		"%d/%d" % [exp_value, exp_to_next],
-		Vector2(x + w - 10.0, y + h * 0.5),
-		PIXEL_FONT_BASE,
+		Vector2(x + w - 10.0 * s, y + h * 0.5),
+		snap_pixel_font_size(int(round(PIXEL_FONT_BASE * s))),
 		Color("#e8f4ff"),
 		HORIZONTAL_ALIGNMENT_RIGHT
 	)
@@ -646,11 +672,12 @@ static func draw_exp_bar(
 static func draw_message_panel(canvas: CanvasItem, text: String, center: Vector2, alpha: float = 1.0) -> void:
 	if text.is_empty() or alpha <= 0.0:
 		return
-	var font_size := PIXEL_FONT_BASE * 2
+	var s := _ui_scale()
+	var font_size := snap_pixel_font_size(int(round(PIXEL_FONT_BASE * 2 * s)))
 	var font := _get_font_for_text(text)
 	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
-	var pad_x := 12.0
-	var pad_y := 8.0
+	var pad_x := 12.0 * s
+	var pad_y := 8.0 * s
 	var box_w := text_size.x + pad_x * 2.0
 	var box_h := text_size.y + pad_y * 2.0
 	var bx := int(floor(center.x - box_w * 0.5))
@@ -658,7 +685,7 @@ static func draw_message_panel(canvas: CanvasItem, text: String, center: Vector2
 	var fill := Color(0.165, 0.141, 0.125, 0.94 * alpha)
 	var border := Color("#c8b080")
 	border.a *= alpha
-	draw_pixel_panel(canvas, Rect2(bx, by, box_w, box_h), fill, border, 2)
+	draw_pixel_panel(canvas, Rect2(bx, by, box_w, box_h), fill, border, maxi(2, int(round(2.0 * s))))
 	var text_color := Color("#ffe7c8")
 	text_color.a *= alpha
 	draw_message_style_text(
@@ -670,11 +697,12 @@ static func draw_buff_notice(canvas: CanvasItem, notice: String, viewport_size: 
 	if notice.is_empty() or alpha <= 0.0:
 		return
 	var text := notice.replace("获得强化: ", "")
-	var font_size := PIXEL_FONT_BASE * 2
+	var s := _ui_scale()
+	var font_size := snap_pixel_font_size(int(round(PIXEL_FONT_BASE * 2 * s)))
 	var font := _get_font_for_text(text)
 	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_CENTER, -1, font_size)
-	var pad_x := 14.0
-	var pad_y := 10.0
+	var pad_x := 14.0 * s
+	var pad_y := 10.0 * s
 	var bw := text_size.x + pad_x * 2.0
 	var bh := text_size.y + pad_y * 2.0
 	var cx := roundi(viewport_size.x * 0.5)
@@ -684,7 +712,7 @@ static func draw_buff_notice(canvas: CanvasItem, notice: String, viewport_size: 
 	var fill := Color(0.165, 0.125, 0.063, 0.94 * alpha)
 	var border := Color("#ffd878")
 	border.a *= alpha
-	draw_pixel_panel(canvas, Rect2(bx, by, bw, bh), fill, border, 2)
+	draw_pixel_panel(canvas, Rect2(bx, by, bw, bh), fill, border, maxi(2, int(round(2.0 * s))))
 	var text_color := Color("#fff6d0")
 	text_color.a *= alpha
 	draw_centered_text(canvas, text, Vector2(cx, cy), font_size, text_color)

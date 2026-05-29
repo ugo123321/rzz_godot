@@ -36,15 +36,15 @@ func _spawn_props(safe_zone: Dictionary) -> void:
 	_decor_root.z_index = -1
 	add_child(_decor_root)
 
-	var w := float(GameConfig.get_tuning("logical_width", 390))
-	var h := float(GameConfig.get_tuning("logical_height", 700))
+	var w := float(GameConfig.get_tuning("logical_width", 720))
+	var h := float(GameConfig.get_tuning("logical_height", 1280))
 	var play_bottom := PixelUiHelper.get_play_area_bottom(h)
 	var top_pad := maxf(100.0, h * 0.14)
 	var placed: Array[Vector2] = []
 	var prop_count := int(GameConfig.get_tuning("terrain_prop_count", 8))
 
 	for i in range(prop_count):
-		var min_dist := 52.0 if i < 4 else 44.0
+		var min_dist := 70.0 if i < 4 else 58.0
 		var pos := _pick_clear_pos(w, h, top_pad, play_bottom - 12.0, safe_zone, min_dist, placed, 120)
 		if pos.x < 0.0:
 			continue
@@ -61,9 +61,9 @@ func _spawn_props(safe_zone: Dictionary) -> void:
 		sprite.position = pos
 		var scale_val := 1.0
 		if path.contains("Rocks"):
-			scale_val = MathUtils.rand_range(0.9, 1.1)
+			scale_val = MathUtils.rand_range(1.8, 2.3)
 		else:
-			scale_val = MathUtils.rand_range(0.85, 1.05)
+			scale_val = MathUtils.rand_range(1.7, 2.1)
 		sprite.scale = Vector2.ONE * scale_val
 		_decor_root.add_child(sprite)
 		placed.append(pos)

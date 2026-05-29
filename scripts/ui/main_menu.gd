@@ -44,9 +44,17 @@ const DEFAULT_TAB := Tab.STAGE
 @export var stage_icon_float_speed := 1.25
 @export var stage_icon_rotate_speed := 30.0
 @export var tab_selected_scale := 1.14
+@export var tab_selected_lift := 14.0
 @export var tab_focus_pulse_speed := 4.2
 @export var start_button_pressed_scale := 0.9
+@export var start_button_bottom_clearance := 28.0
+@export_group("Top Bar")
+@export var top_money_bg_texture: Texture2D
+@export var top_gold_icon_texture: Texture2D
+@export var top_gem_icon_texture: Texture2D
 
+@onready var _content: MarginContainer = $Content
+@onready var _bottom_bar: Control = $BottomBar
 @onready var _background: TextureRect = %Background
 @onready var _bottom_bg: TextureRect = %BottomBg
 @onready var _tab_focus: TextureRect = %TabFocus
@@ -60,6 +68,12 @@ const DEFAULT_TAB := Tab.STAGE
 @onready var _tab_labels: Array[Label] = [
 	%TabGacha/TabLabel, %TabEquipment/TabLabel, %TabStage/TabLabel, %TabDungeon/TabLabel, %TabAchievement/TabLabel,
 ]
+@onready var _top_gold_label: Label = %TopBar/GoldBar/Value
+@onready var _top_gem_label: Label = %TopBar/GemBar/Value
+@onready var _top_gold_bg: TextureRect = %TopBar/GoldBar/Bg
+@onready var _top_gem_bg: TextureRect = %TopBar/GemBar/Bg
+@onready var _top_gold_icon: TextureRect = %TopBar/GoldBar/Icon
+@onready var _top_gem_icon: TextureRect = %TopBar/GemBar/Icon
 @onready var _panels: Array[Control] = [
 	%GachaPanel, %EquipmentPanel, %StagePanel, %DungeonPanel, %AchievementPanel,
 ]
@@ -77,20 +91,63 @@ const DEFAULT_TAB := Tab.STAGE
 var _current_tab := DEFAULT_TAB
 var _chapter_list_index := 0
 var _tab_focus_anim_time := 0.0
-var _stage_icon_base_position := Vector2.ZERO
 var _stage_icon_rotation_rad := 0.0
 var _start_button_pressed := false
+var _tab_base_positions: Array[Vector2] = []
+
+
+func _ui_scale() -> float:
+	return GameConfig.get_resolution_scale() * GameConfig.get_ui_scale()
+
+
+func _scaled(v: float) -> float:
+	return v * _ui_scale()
+
+
+func get_bottom_bar_height() -> float:
+	if _bottom_bar == null:
+		return 168.0
+	var h := _bottom_bar.size.y
+	if h > 0.0:
+		return h
+	return maxf(_bottom_bar.custom_minimum_size.y, 168.0)
+
+
+func _sync_content_bottom_inset() -> void:
+	if _content == null:
+		return
+	_content.offset_bottom = -get_bottom_bar_height()
+
+
+func _apply_start_button_safe_margin() -> void:
+	var wrap := _start_button.get_parent() if _start_button != null else null
+	if wrap == null or not wrap is Control:
+		return
+	var btn_h := _start_button.custom_minimum_size.y
+	if _start_button.size.y > 0.0:
+		btn_h = _start_button.size.y
+	var tab_h := 0.0
+	for btn in _tab_buttons:
+		if btn != null:
+			tab_h = maxf(tab_h, btn.size.y)
+	# 选中页签放大 + 上移后向上占用的高度 + 与底栏的安全间距
+	var tab_growth := tab_h * maxf(0.0, tab_selected_scale - 1.0)
+	var lift := tab_growth + tab_selected_lift + start_button_bottom_clearance
+	wrap.offset_top = -btn_h - lift
+	wrap.offset_bottom = -lift
 
 
 func _ready() -> void:
 	_apply_default_textures()
 	_apply_pixel_filter()
 	PixelUi.apply_ui_font_tree(self)
-	_cache_stage_visual_state()
+	_sync_content_bottom_inset()
 	call_deferred("_cache_stage_visual_state")
 	_connect_signals()
+	_connect_tab_row_layout()
 	_setup_start_button()
-	_select_tab(DEFAULT_TAB)
+	_setup_top_bar()
+	_connect_top_bar_signals()
 	_refresh_chapter_display()
 
 
@@ -102,9 +159,9 @@ func _process(delta: float) -> void:
 func _apply_default_textures() -> void:
 	# 优先保留场景里已拖好的纹理，避免运行时被空 export 覆盖掉。
 	background_texture = _resolve_texture(background_texture, _background, "res://assets/ui/home/bg_stage01.png")
-	bottom_bar_texture = _resolve_texture(bottom_bar_texture, _bottom_bg, "res://assets/ui/home/bg_lobby_bottom.png")
+	bottom_bar_texture = _resolve_texture(bottom_bar_texture, _bottom_bg, "res://assets/ui/battle/decoration_wave.png")
 	tab_focus_texture = _resolve_texture(tab_focus_texture, _tab_focus, "res://assets/ui/home/menu_bottom_focus.png")
-	tab_rail_texture = _resolve_texture(tab_rail_texture, _tab_rail, "res://assets/ui/home/menu_middle_bg.png")
+	tab_rail_texture = _resolve_texture(tab_rail_texture, _tab_rail, "")
 	if bottom_bar_texture == null:
 		bottom_bar_texture = _build_bottom_bar_texture()
 	if tab_rail_texture == null:
@@ -113,23 +170,33 @@ func _apply_default_textures() -> void:
 		tab_focus_texture = _build_tab_focus_texture(false)
 
 	if icon_gacha == null:
-		icon_gacha = _load_tex("res://assets/ui/home/icon_shop.png")
+		icon_gacha = _load_tex("res://assets/ui/bottom/shop_icon.png")
+		if icon_gacha == null:
+			icon_gacha = _load_tex("res://assets/ui/home/icon_shop.png")
 		if icon_gacha == null:
 			icon_gacha = _build_tab_icon_texture(Tab.GACHA)
 	if icon_equipment == null:
-		icon_equipment = _load_tex("res://assets/ui/home/icon_bag.png")
+		icon_equipment = _load_tex("res://assets/ui/bottom/equipment_icon.png")
+		if icon_equipment == null:
+			icon_equipment = _load_tex("res://assets/ui/home/icon_bag.png")
 		if icon_equipment == null:
 			icon_equipment = _build_tab_icon_texture(Tab.EQUIPMENT)
 	if icon_stage == null:
-		icon_stage = _load_tex("res://assets/ui/home/icon_battle.png")
+		icon_stage = _load_tex("res://assets/ui/bottom/battle_icon.png")
+		if icon_stage == null:
+			icon_stage = _load_tex("res://assets/ui/home/icon_battle.png")
 		if icon_stage == null:
 			icon_stage = _build_tab_icon_texture(Tab.STAGE)
 	if icon_dungeon == null:
-		icon_dungeon = _load_tex("res://assets/ui/home/icon_map.png")
+		icon_dungeon = _load_tex("res://assets/ui/bottom/dungeon_icon.png")
+		if icon_dungeon == null:
+			icon_dungeon = _load_tex("res://assets/ui/home/icon_map.png")
 		if icon_dungeon == null:
 			icon_dungeon = _build_tab_icon_texture(Tab.DUNGEON)
 	if icon_achievement == null:
-		icon_achievement = _load_tex("res://assets/ui/home/icon_book.png")
+		icon_achievement = _load_tex("res://assets/ui/bottom/book_icon.png")
+		if icon_achievement == null:
+			icon_achievement = _load_tex("res://assets/ui/home/icon_book.png")
 		if icon_achievement == null:
 			icon_achievement = _build_tab_icon_texture(Tab.ACHIEVEMENT)
 	if tab_center_focus_texture == null:
@@ -137,21 +204,40 @@ func _apply_default_textures() -> void:
 		if tab_center_focus_texture == null:
 			tab_center_focus_texture = _build_tab_focus_texture(true)
 	if tab_slot_texture == null:
-		tab_slot_texture = _load_tex("res://assets/ui/home/btn_white_bg.png")
+		tab_slot_texture = _load_tex("res://assets/ui/bottom/normal_button.png")
+		if tab_slot_texture == null:
+			tab_slot_texture = _load_tex("res://assets/ui/home/btn_white_bg.png")
 		if tab_slot_texture == null:
 			tab_slot_texture = _build_tab_slot_texture(false, false)
 	if tab_slot_active_texture == null:
-		tab_slot_active_texture = _load_tex("res://assets/ui/home/menu_bottom_focus_light.png")
+		tab_slot_active_texture = _load_tex("res://assets/ui/bottom/picked_button.png")
+		if tab_slot_active_texture == null:
+			tab_slot_active_texture = _load_tex("res://assets/ui/home/menu_bottom_focus_light.png")
 		if tab_slot_active_texture == null:
 			tab_slot_active_texture = _build_tab_slot_texture(false, true)
 	if tab_slot_center_texture == null:
-		tab_slot_center_texture = _load_tex("res://assets/ui/home/tab_center_blue.png")
+		tab_slot_center_texture = _load_tex("res://assets/ui/bottom/normal_button.png")
+		if tab_slot_center_texture == null:
+			tab_slot_center_texture = _load_tex("res://assets/ui/home/tab_center_blue.png")
 		if tab_slot_center_texture == null:
 			tab_slot_center_texture = _build_tab_slot_texture(true, false)
 	if tab_slot_center_active_texture == null:
-		tab_slot_center_active_texture = _load_tex("res://assets/ui/home/menu_middle_focus.png")
+		tab_slot_center_active_texture = _load_tex("res://assets/ui/bottom/picked_button.png")
+		if tab_slot_center_active_texture == null:
+			tab_slot_center_active_texture = _load_tex("res://assets/ui/home/menu_middle_focus.png")
 		if tab_slot_center_active_texture == null:
 			tab_slot_center_active_texture = _build_tab_slot_texture(true, true)
+	if top_money_bg_texture == null:
+		top_money_bg_texture = _load_tex("res://assets/ui/battle/money_bg.png")
+	if top_gold_icon_texture == null:
+		top_gold_icon_texture = _load_tex("res://assets/ui/battle/gold_icon.png")
+	if top_gem_icon_texture == null:
+		top_gem_icon_texture = _load_tex("res://assets/ui/battle/gem_icon.png")
+	if play_button_texture == null:
+		if _start_button != null and _start_button.texture_normal != null:
+			play_button_texture = _start_button.texture_normal
+		else:
+			play_button_texture = _load_tex("res://assets/ui/battle/start_button.png")
 	if chapter_prev_texture == null:
 		chapter_prev_texture = _load_tex("res://assets/ui/home/arrow_prev.png")
 	if chapter_next_texture == null:
@@ -190,7 +276,7 @@ func _apply_default_textures() -> void:
 	_set_texture_rect_texture(_stage_icon, stage_icon_texture)
 	_set_texture_rect_texture(_stage_ground, stage_ground_texture)
 	_set_texture_rect_texture(_stage_sky_glow, stage_sky_glow_texture)
-	_apply_tab_button_visuals()
+	_apply_top_bar_textures()
 
 
 func _apply_pixel_filter() -> void:
@@ -206,6 +292,14 @@ func _collect_texture_nodes(root: Node) -> Array:
 	for child in root.get_children():
 		result.append_array(_collect_texture_nodes(child))
 	return result
+
+
+func _connect_tab_row_layout() -> void:
+	var tab_row := get_node_or_null("BottomBar/TabRow") as Control
+	if tab_row == null:
+		return
+	if not tab_row.resized.is_connected(_refresh_tab_layout_state):
+		tab_row.resized.connect(_refresh_tab_layout_state)
 
 
 func _connect_signals() -> void:
@@ -227,6 +321,7 @@ func _select_tab(tab_index: int) -> void:
 	for i in TAB_COUNT:
 		_panels[i].visible = i == _current_tab
 	_apply_tab_button_visuals()
+	call_deferred("_refresh_tab_layout_state")
 	call_deferred("_update_tab_focus")
 
 
@@ -248,9 +343,24 @@ func _apply_tab_button_visuals() -> void:
 		if icon != null:
 			icon.modulate = Color.WHITE if selected else Color(0.78, 0.82, 0.9)
 		if label != null:
-			label.modulate = Color(1.0, 0.98, 0.9) if selected else Color(0.68, 0.72, 0.8)
-		btn.modulate = Color.WHITE if selected else Color(0.84, 0.86, 0.92)
+			label.modulate = Color.WHITE if selected else Color(0.76, 0.84, 0.9)
+		btn.modulate = Color.WHITE
 		btn.scale = Vector2.ONE * (tab_selected_scale if selected else 1.0)
+		if i < _tab_base_positions.size():
+			var base_pos := _tab_base_positions[i]
+			btn.position = base_pos + Vector2(0.0, -tab_selected_lift if selected else 0.0)
+
+
+func _refresh_tab_layout_state() -> void:
+	for btn in _tab_buttons:
+		if btn == null:
+			continue
+		btn.pivot_offset = Vector2(floorf(btn.size.x * 0.5), btn.size.y)
+	_tab_base_positions.clear()
+	for btn in _tab_buttons:
+		_tab_base_positions.append(btn.position if btn != null else Vector2.ZERO)
+	_apply_tab_button_visuals()
+	_apply_start_button_safe_margin()
 
 
 func _set_tab_slot_texture(btn: TextureButton, index: int, selected: bool) -> void:
@@ -336,7 +446,7 @@ func _cache_start_button_pivot() -> void:
 		return
 	_start_button.pivot_offset = Vector2(
 		floorf(_start_button.size.x * 0.5),
-		floorf(_start_button.size.y * 0.5)
+		floorf(_start_button.size.y)
 	)
 	_update_start_button_scale()
 
@@ -344,10 +454,12 @@ func _cache_start_button_pivot() -> void:
 func _apply_start_button_textures() -> void:
 	if _start_button == null:
 		return
-	var normal := _build_start_adventure_button_texture(false)
-	var pressed_tex := _build_start_adventure_button_texture(true)
-	if play_button_texture != null:
-		normal = play_button_texture
+	var normal := play_button_texture
+	if normal == null:
+		normal = _build_start_adventure_button_texture(false)
+	var pressed_tex := normal
+	if play_button_texture == null:
+		pressed_tex = _build_start_adventure_button_texture(true)
 	_start_button.texture_normal = normal
 	_start_button.texture_pressed = pressed_tex
 	_start_button.texture_hover = normal
@@ -380,7 +492,6 @@ func _animate_stage_panel(delta: float) -> void:
 		return
 
 	if _stage_icon_pivot != null:
-		_stage_icon_pivot.position = _stage_icon_base_position
 		_stage_icon_rotation_rad += deg_to_rad(stage_icon_rotate_speed) * delta
 		# 整数角度 + 父节点旋转，避免 NEAREST 纹理在亚像素旋转时抖动。
 		_stage_icon_pivot.rotation = deg_to_rad(snappedf(rad_to_deg(_stage_icon_rotation_rad), 1.0))
@@ -396,23 +507,50 @@ func _cache_stage_visual_state() -> void:
 			floorf(pivot_size.x * 0.5),
 			floorf(pivot_size.y * 0.5)
 		)
-		_stage_icon_base_position = _stage_icon_pivot.position
 		_stage_icon_pivot.rotation = _stage_icon_rotation_rad
 	if _stage_icon != null:
 		_stage_icon.pivot_offset = Vector2.ZERO
 		_stage_icon.rotation = 0.0
 	if _tab_focus != null:
 		_tab_focus.pivot_offset = _tab_focus.size * 0.5
-	for btn in _tab_buttons:
-		if btn == null:
-			continue
-		btn.pivot_offset = btn.size * 0.5
 	if _start_button != null:
 		_start_button.pivot_offset = Vector2(
 			floorf(_start_button.size.x * 0.5),
-			floorf(_start_button.size.y * 0.5)
+			floorf(_start_button.size.y)
 		)
 		_update_start_button_scale()
+	_sync_content_bottom_inset()
+	_select_tab(DEFAULT_TAB)
+
+
+func _setup_top_bar() -> void:
+	if _top_gold_label != null:
+		_top_gold_label.text = str(LobbyState.gold)
+	if _top_gem_label != null:
+		_top_gem_label.text = "0"
+
+
+func _connect_top_bar_signals() -> void:
+	if EventBus == null:
+		return
+	if not EventBus.gold_changed.is_connected(_on_gold_changed):
+		EventBus.gold_changed.connect(_on_gold_changed)
+
+
+func _on_gold_changed(total_gold: int) -> void:
+	if _top_gold_label != null:
+		_top_gold_label.text = str(maxi(0, total_gold))
+
+
+func _apply_top_bar_textures() -> void:
+	if _top_gold_bg != null and top_money_bg_texture != null:
+		_top_gold_bg.texture = top_money_bg_texture
+	if _top_gem_bg != null and top_money_bg_texture != null:
+		_top_gem_bg.texture = top_money_bg_texture
+	if _top_gold_icon != null and top_gold_icon_texture != null:
+		_top_gold_icon.texture = top_gold_icon_texture
+	if _top_gem_icon != null and top_gem_icon_texture != null:
+		_top_gem_icon.texture = top_gem_icon_texture
 
 
 func _build_start_adventure_button_texture(pressed: bool) -> Texture2D:
@@ -487,11 +625,17 @@ func _build_default_portal_texture() -> Texture2D:
 
 
 func _build_bottom_bar_texture() -> Texture2D:
-	var image := Image.create(390, 88, false, Image.FORMAT_RGBA8)
+	var bar_w := int(GameConfig.get_tuning("logical_width", 720))
+	bar_w = maxi(1, bar_w)
+	var bar_h := maxi(88, int(round(_scaled(88.0))))
+	var image := Image.create(bar_w, bar_h, false, Image.FORMAT_RGBA8)
 	image.fill(Color("#1a2140"))
-	_draw_image_rect(image, Rect2i(0, 0, 390, 6), Color("#2a355f"))
-	_draw_image_rect(image, Rect2i(0, 6, 390, 2), Color("#3f4f86"))
-	_draw_image_rect(image, Rect2i(0, 78, 390, 10), Color("#131832"))
+	var top_h := maxi(2, int(round(_scaled(6.0))))
+	var top_h2 := maxi(1, int(round(_scaled(2.0))))
+	var bottom_h := maxi(4, int(round(_scaled(10.0))))
+	_draw_image_rect(image, Rect2i(0, 0, bar_w, top_h), Color("#2a355f"))
+	_draw_image_rect(image, Rect2i(0, top_h, bar_w, top_h2), Color("#3f4f86"))
+	_draw_image_rect(image, Rect2i(0, bar_h - bottom_h, bar_w, bottom_h), Color("#131832"))
 	return ImageTexture.create_from_image(image)
 
 

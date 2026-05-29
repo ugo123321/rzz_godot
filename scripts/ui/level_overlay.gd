@@ -20,8 +20,8 @@ func setup(battle_node) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	set_offsets_preset(Control.PRESET_FULL_RECT)
-	var w := float(GameConfig.get_tuning("logical_width", 390))
-	var h := float(GameConfig.get_tuning("logical_height", 700))
+	var w := float(GameConfig.get_tuning("logical_width", 720))
+	var h := float(GameConfig.get_tuning("logical_height", 1280))
 	size = Vector2(w, h)
 	_build_fail_action_buttons()
 
@@ -155,8 +155,8 @@ func _update_fail_intro(delta: float) -> void:
 
 
 func _draw() -> void:
-	var w := size.x if size.x > 0 else float(GameConfig.get_tuning("logical_width", 390))
-	var h := size.y if size.y > 0 else float(GameConfig.get_tuning("logical_height", 700))
+	var w := size.x if size.x > 0 else float(GameConfig.get_tuning("logical_width", 720))
+	var h := size.y if size.y > 0 else float(GameConfig.get_tuning("logical_height", 1280))
 	var cx := w * 0.5
 	if not stage_intro.is_empty():
 		_draw_stage_intro(cx, w, h)
@@ -181,17 +181,17 @@ func _draw_stage_intro(cx: float, w: float, h: float) -> void:
 			var t := 1.0 - clampf(float(intro.get("timer", 0.0)) / float(intro.get("slide_out_dur", 0.38)), 0.0, 1.0)
 			text_x = lerpf(cx, w + off_screen, t * t)
 	var text := "第%d关" % int(intro.get("level_num", 1))
-	_draw_pixel_text(text, Vector2(text_x, label_y), 22, Color.BLACK)
+	_draw_pixel_text(text, Vector2(text_x, label_y), 26, Color.BLACK)
 	var boss_name := str(intro.get("boss_name", ""))
 	if not boss_name.is_empty():
-		_draw_pixel_text(boss_name, Vector2(text_x, label_y + 24.0), 11, Color.BLACK)
+		_draw_pixel_text(boss_name, Vector2(text_x, label_y + 30.0), 14, Color.BLACK)
 
 
 func _draw_clear_flash(cx: float, cy: float) -> void:
 	if clear_flash.is_empty():
 		return
 	var alpha := clampf(float(clear_flash.get("timer", 0.0)) / float(clear_flash.get("duration", 1.0)), 0.0, 1.0)
-	_draw_pixel_text("关卡通过", Vector2(cx, cy), 26, Color("#ffd8a0"), alpha)
+	_draw_pixel_text("关卡通过", Vector2(cx, cy), 30, Color("#ffd8a0"), alpha)
 
 
 func _draw_fail_overlay(w: float, h: float) -> void:
@@ -200,14 +200,14 @@ func _draw_fail_overlay(w: float, h: float) -> void:
 		return
 	draw_rect(Rect2(Vector2.ZERO, Vector2(w, h)), Color(0, 0, 0, 0.72 * overlay_a))
 	var msg_a := clampf(overlay_a / 0.65, 0.0, 1.0)
-	_draw_pixel_text("体力耗尽", Vector2(w * 0.5, h * 0.44), 20, Color("#ff9c84"), msg_a)
-	_draw_pixel_text("请选择操作", Vector2(w * 0.5, h * 0.44 + 28.0), 13, Color("#f4e8da"), msg_a)
+	_draw_pixel_text("体力耗尽", Vector2(w * 0.5, h * 0.42), 26, Color("#ff9c84"), msg_a)
+	_draw_pixel_text("请选择操作", Vector2(w * 0.5, h * 0.42 + 38.0), 16, Color("#f4e8da"), msg_a)
 
 
 func _draw_complete(w: float, h: float) -> void:
 	draw_rect(Rect2(Vector2.ZERO, Vector2(w, h)), Color(0, 0, 0, 0.72))
-	_draw_pixel_text("你完成了全部关卡", Vector2(w * 0.5, h * 0.44), 22, Color("#ffd8a0"))
-	_draw_pixel_text("点击屏幕重新开始", Vector2(w * 0.5, h * 0.58), 14, Color("#f4e8da"))
+	_draw_pixel_text("你完成了全部关卡", Vector2(w * 0.5, h * 0.44), 26, Color("#ffd8a0"))
+	_draw_pixel_text("点击屏幕重新开始", Vector2(w * 0.5, h * 0.58), 16, Color("#f4e8da"))
 
 
 func _draw_pixel_text(text: String, pos: Vector2, font_size: int, color: Color, alpha: float = 1.0) -> void:
@@ -225,25 +225,25 @@ func _build_fail_action_buttons() -> void:
 	_fail_actions_box.mouse_filter = Control.MOUSE_FILTER_STOP
 	_fail_actions_box.anchor_left = 0.5
 	_fail_actions_box.anchor_right = 0.5
-	_fail_actions_box.anchor_top = 0.66
-	_fail_actions_box.anchor_bottom = 0.66
-	_fail_actions_box.offset_left = -150.0
-	_fail_actions_box.offset_right = 150.0
+	_fail_actions_box.anchor_top = 0.64
+	_fail_actions_box.anchor_bottom = 0.64
+	_fail_actions_box.offset_left = -190.0
+	_fail_actions_box.offset_right = 190.0
 	_fail_actions_box.offset_top = 0.0
-	_fail_actions_box.offset_bottom = 44.0
+	_fail_actions_box.offset_bottom = 56.0
 	_fail_actions_box.alignment = BoxContainer.ALIGNMENT_CENTER
-	_fail_actions_box.add_theme_constant_override("separation", 10)
+	_fail_actions_box.add_theme_constant_override("separation", 16)
 	add_child(_fail_actions_box)
 
 	_fail_retry_button = Button.new()
 	_fail_retry_button.text = "重来"
-	_fail_retry_button.custom_minimum_size = Vector2(130, 42)
+	_fail_retry_button.custom_minimum_size = Vector2(170, 54)
 	_fail_retry_button.pressed.connect(_on_fail_retry_pressed)
 	_fail_actions_box.add_child(_fail_retry_button)
 
 	_fail_back_button = Button.new()
 	_fail_back_button.text = "回到主界面"
-	_fail_back_button.custom_minimum_size = Vector2(130, 42)
+	_fail_back_button.custom_minimum_size = Vector2(170, 54)
 	_fail_back_button.pressed.connect(_on_fail_back_pressed)
 	_fail_actions_box.add_child(_fail_back_button)
 
