@@ -40,11 +40,12 @@ const DEFAULT_TAB := Tab.STAGE
 @export var stage_icon_texture: Texture2D
 @export var stage_ground_texture: Texture2D
 @export var stage_sky_glow_texture: Texture2D
-@export var stage_icon_float_range := 5.0
-@export var stage_icon_float_speed := 1.25
-@export var stage_icon_rotate_speed := 30.0
-@export var tab_selected_scale := 1.14
+@export var stage_sky_glow_scroll_speed := 22.0
+@export var stage_icon_base_scale := 1.0
+@export var stage_icon_pulse_amount := 0.035
+@export var stage_icon_pulse_speed := 1.1
 @export var tab_selected_lift := 14.0
+@export var tab_lift_duration := 0.22
 @export var tab_focus_pulse_speed := 4.2
 @export var start_button_pressed_scale := 0.9
 @export var start_button_bottom_clearance := 28.0
@@ -68,12 +69,12 @@ const DEFAULT_TAB := Tab.STAGE
 @onready var _tab_labels: Array[Label] = [
 	%TabGacha/TabLabel, %TabEquipment/TabLabel, %TabStage/TabLabel, %TabDungeon/TabLabel, %TabAchievement/TabLabel,
 ]
-@onready var _top_gold_label: Label = %TopBar/GoldBar/Value
-@onready var _top_gem_label: Label = %TopBar/GemBar/Value
-@onready var _top_gold_bg: TextureRect = %TopBar/GoldBar/Bg
-@onready var _top_gem_bg: TextureRect = %TopBar/GemBar/Bg
-@onready var _top_gold_icon: TextureRect = %TopBar/GoldBar/Icon
-@onready var _top_gem_icon: TextureRect = %TopBar/GemBar/Icon
+@onready var _top_gold_label: Label = %TopBar/BarRow/GoldBar/Value
+@onready var _top_gem_label: Label = %TopBar/BarRow/GemBar/Value
+@onready var _top_gold_bg: TextureRect = %TopBar/BarRow/GoldBar/Bg
+@onready var _top_gem_bg: TextureRect = %TopBar/BarRow/GemBar/Bg
+@onready var _top_gold_icon: TextureRect = %TopBar/BarRow/GoldBar/Icon
+@onready var _top_gem_icon: TextureRect = %TopBar/BarRow/GemBar/Icon
 @onready var _panels: Array[Control] = [
 	%GachaPanel, %EquipmentPanel, %StagePanel, %DungeonPanel, %AchievementPanel,
 ]
@@ -91,9 +92,14 @@ const DEFAULT_TAB := Tab.STAGE
 var _current_tab := DEFAULT_TAB
 var _chapter_list_index := 0
 var _tab_focus_anim_time := 0.0
-var _stage_icon_rotation_rad := 0.0
+var _stage_icon_pulse_time := 0.0
 var _start_button_pressed := false
 var _tab_base_positions: Array[Vector2] = []
+var _tab_lift_tweens: Array[Tween] = []
+var _sky_glow_scroll_layer: Control
+var _sky_glow_tiles: Array[TextureRect] = []
+var _sky_glow_tile_width := 0.0
+var _stage_icon_pulse_material: ShaderMaterial
 
 
 func _ui_scale() -> float:
@@ -120,21 +126,8 @@ func _sync_content_bottom_inset() -> void:
 
 
 func _apply_start_button_safe_margin() -> void:
-	var wrap := _start_button.get_parent() if _start_button != null else null
-	if wrap == null or not wrap is Control:
-		return
-	var btn_h := _start_button.custom_minimum_size.y
-	if _start_button.size.y > 0.0:
-		btn_h = _start_button.size.y
-	var tab_h := 0.0
-	for btn in _tab_buttons:
-		if btn != null:
-			tab_h = maxf(tab_h, btn.size.y)
-	# 选中页签放大 + 上移后向上占用的高度 + 与底栏的安全间距
-	var tab_growth := tab_h * maxf(0.0, tab_selected_scale - 1.0)
-	var lift := tab_growth + tab_selected_lift + start_button_bottom_clearance
-	wrap.offset_top = -btn_h - lift
-	wrap.offset_bottom = -lift
+	# 开始按钮位置以场景里 StartButtonWrap 的 offset 为准，不在运行时覆盖。
+	pass
 
 
 func _ready() -> void:
@@ -276,12 +269,15 @@ func _apply_default_textures() -> void:
 	_set_texture_rect_texture(_stage_icon, stage_icon_texture)
 	_set_texture_rect_texture(_stage_ground, stage_ground_texture)
 	_set_texture_rect_texture(_stage_sky_glow, stage_sky_glow_texture)
+	_sync_sky_glow_tile_textures()
 	_apply_top_bar_textures()
 
 
 func _apply_pixel_filter() -> void:
 	for node in _collect_texture_nodes(self):
 		if node is TextureRect or node is TextureButton:
+			if node == _stage_icon:
+				continue
 			node.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 
@@ -340,15 +336,54 @@ func _apply_tab_button_visuals() -> void:
 		var icon := _tab_icons[i] if i < _tab_icons.size() else null
 		var label := _tab_labels[i] if i < _tab_labels.size() else null
 		_set_tab_slot_texture(btn, i, selected)
+		btn.modulate = Color.WHITE
+		btn.scale = Vector2.ONE
 		if icon != null:
 			icon.modulate = Color.WHITE if selected else Color(0.78, 0.82, 0.9)
-		if label != null:
+		if label != null and label.visible:
 			label.modulate = Color.WHITE if selected else Color(0.76, 0.84, 0.9)
-		btn.modulate = Color.WHITE
-		btn.scale = Vector2.ONE * (tab_selected_scale if selected else 1.0)
+	_animate_tab_lifts()
+
+
+func _animate_tab_lifts(immediate: bool = false) -> void:
+	_ensure_tab_lift_tween_slots()
+	var duration := maxf(tab_lift_duration, 0.001)
+	for i in TAB_COUNT:
+		var btn := _tab_buttons[i]
+		if btn == null or i >= _tab_base_positions.size():
+			continue
+		var base_pos := _tab_base_positions[i]
+		var target_pos := base_pos + Vector2(0.0, -tab_selected_lift if i == _current_tab else 0.0)
+		if _tab_lift_tweens[i] != null and _tab_lift_tweens[i].is_valid():
+			_tab_lift_tweens[i].kill()
+		if immediate or is_equal_approx(duration, 0.0):
+			btn.position = target_pos
+			continue
+		var tween := create_tween()
+		tween.set_trans(Tween.TRANS_SINE)
+		tween.set_ease(Tween.EASE_IN_OUT)
+		tween.tween_property(btn, "position", target_pos, duration)
+		_tab_lift_tweens[i] = tween
+
+
+func _ensure_tab_lift_tween_slots() -> void:
+	if _tab_lift_tweens.size() == TAB_COUNT:
+		return
+	_tab_lift_tweens.clear()
+	_tab_lift_tweens.resize(TAB_COUNT)
+
+
+func _reset_tab_buttons_to_layout() -> void:
+	_ensure_tab_lift_tween_slots()
+	for i in TAB_COUNT:
+		var btn := _tab_buttons[i]
+		if btn == null:
+			continue
+		if _tab_lift_tweens[i] != null and _tab_lift_tweens[i].is_valid():
+			_tab_lift_tweens[i].kill()
+		btn.scale = Vector2.ONE
 		if i < _tab_base_positions.size():
-			var base_pos := _tab_base_positions[i]
-			btn.position = base_pos + Vector2(0.0, -tab_selected_lift if selected else 0.0)
+			btn.position = _tab_base_positions[i]
 
 
 func _refresh_tab_layout_state() -> void:
@@ -356,6 +391,7 @@ func _refresh_tab_layout_state() -> void:
 		if btn == null:
 			continue
 		btn.pivot_offset = Vector2(floorf(btn.size.x * 0.5), btn.size.y)
+	_reset_tab_buttons_to_layout()
 	_tab_base_positions.clear()
 	for btn in _tab_buttons:
 		_tab_base_positions.append(btn.position if btn != null else Vector2.ZERO)
@@ -491,26 +527,107 @@ func _animate_stage_panel(delta: float) -> void:
 	if _panels.is_empty() or not _panels[Tab.STAGE].visible:
 		return
 
+	if _stage_icon_pulse_material != null:
+		_stage_icon_pulse_time += delta * stage_icon_pulse_speed
+		# 只在基准尺寸以下缩放，避免放大时 UV 裁切贴图顶部。
+		var pulse := (1.0 + sin(_stage_icon_pulse_time * TAU)) * 0.5
+		_stage_icon_pulse_material.set_shader_parameter(
+			"scale_factor", stage_icon_base_scale * (1.0 - pulse * stage_icon_pulse_amount)
+		)
 	if _stage_icon_pivot != null:
-		_stage_icon_rotation_rad += deg_to_rad(stage_icon_rotate_speed) * delta
-		# 整数角度 + 父节点旋转，避免 NEAREST 纹理在亚像素旋转时抖动。
-		_stage_icon_pivot.rotation = deg_to_rad(snappedf(rad_to_deg(_stage_icon_rotation_rad), 1.0))
-	if _stage_icon != null:
-		_stage_icon.scale = Vector2.ONE
-		_stage_icon.modulate = Color.WHITE
-		_stage_icon.rotation = 0.0
+		_stage_icon_pivot.rotation = 0.0
+	_animate_sky_glow_scroll(delta)
+
+
+func _setup_sky_glow_scroll() -> void:
+	if _stage_sky_glow == null or _stage_viewport == null:
+		return
+	if _sky_glow_scroll_layer != null:
+		_refresh_sky_glow_scroll_layout()
+		return
+
+	_stage_viewport.clip_contents = false
+	if not _stage_viewport.resized.is_connected(_refresh_sky_glow_scroll_layout):
+		_stage_viewport.resized.connect(_refresh_sky_glow_scroll_layout)
+
+	var layer := Control.new()
+	layer.name = "SkyGlowScroll"
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.clip_contents = true
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_stage_viewport.add_child(layer)
+	_stage_viewport.move_child(layer, 0)
+
+	var sky := _stage_sky_glow
+	sky.get_parent().remove_child(sky)
+	layer.add_child(sky)
+	sky.name = "SkyGlowA"
+	sky.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	sky.grow_horizontal = Control.GROW_DIRECTION_END
+	sky.grow_vertical = Control.GROW_DIRECTION_END
+
+	var sky_glow_copy := sky.duplicate() as TextureRect
+	sky_glow_copy.name = "SkyGlowB"
+	layer.add_child(sky_glow_copy)
+
+	_sky_glow_scroll_layer = layer
+	_sky_glow_tiles = [sky, sky_glow_copy]
+	_refresh_sky_glow_scroll_layout()
+
+
+func _refresh_sky_glow_scroll_layout() -> void:
+	if _sky_glow_tiles.size() < 2 or _stage_viewport == null:
+		return
+	var view_size := _stage_viewport.size
+	if view_size.x <= 0.0 or view_size.y <= 0.0:
+		return
+	_sky_glow_tile_width = view_size.x
+	for tile in _sky_glow_tiles:
+		tile.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+		tile.size = view_size
+	_sky_glow_tiles[0].position = Vector2.ZERO
+	_sky_glow_tiles[1].position = Vector2(_sky_glow_tile_width, 0.0)
+
+
+func _sync_sky_glow_tile_textures() -> void:
+	if _sky_glow_tiles.size() < 2 or stage_sky_glow_texture == null:
+		return
+	for tile in _sky_glow_tiles:
+		tile.texture = stage_sky_glow_texture
+
+
+func _animate_sky_glow_scroll(delta: float) -> void:
+	if _sky_glow_tiles.size() < 2 or stage_sky_glow_scroll_speed <= 0.0:
+		return
+	if _panels.is_empty() or not _panels[Tab.STAGE].visible:
+		return
+	if _sky_glow_tile_width <= 0.0:
+		_refresh_sky_glow_scroll_layout()
+		return
+
+	var dx := stage_sky_glow_scroll_speed * delta
+	for tile in _sky_glow_tiles:
+		tile.position.x += dx
+	for i in 2:
+		var tile := _sky_glow_tiles[i]
+		if tile.position.x >= _sky_glow_tile_width:
+			var other := _sky_glow_tiles[1 - i]
+			tile.position.x = other.position.x - _sky_glow_tile_width
+
 
 func _cache_stage_visual_state() -> void:
 	if _stage_icon_pivot != null:
-		var pivot_size := _stage_icon_pivot.size
-		_stage_icon_pivot.pivot_offset = Vector2(
-			floorf(pivot_size.x * 0.5),
-			floorf(pivot_size.y * 0.5)
-		)
-		_stage_icon_pivot.rotation = _stage_icon_rotation_rad
+		_stage_icon_pivot.rotation = 0.0
 	if _stage_icon != null:
-		_stage_icon.pivot_offset = Vector2.ZERO
-		_stage_icon.rotation = 0.0
+		_stage_icon.scale = Vector2.ONE
+		# 用 shader 做呼吸缩放，避免项目开启 snap_2d_transforms_to_pixel 时改 scale 产生抖动。
+		_stage_icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		if _stage_icon_pulse_material == null:
+			var shader := load("res://shaders/ui/stage_icon_pulse.gdshader") as Shader
+			_stage_icon_pulse_material = ShaderMaterial.new()
+			_stage_icon_pulse_material.shader = shader
+			_stage_icon.material = _stage_icon_pulse_material
+		_stage_icon_pulse_material.set_shader_parameter("scale_factor", stage_icon_base_scale)
 	if _tab_focus != null:
 		_tab_focus.pivot_offset = _tab_focus.size * 0.5
 	if _start_button != null:
@@ -520,6 +637,7 @@ func _cache_stage_visual_state() -> void:
 		)
 		_update_start_button_scale()
 	_sync_content_bottom_inset()
+	_setup_sky_glow_scroll()
 	_select_tab(DEFAULT_TAB)
 
 

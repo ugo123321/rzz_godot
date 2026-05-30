@@ -22,6 +22,7 @@ GameConfig="*res://scripts/autoload/game_config.gd"
 EventBus="*res://scripts/autoload/event_bus.gd"
 AudioManager="*res://scripts/autoload/audio_manager.gd"
 LobbyState="*res://scripts/autoload/lobby_state.gd"
+MCPRuntimeProbe="*res://addons/godot_mcp/runtime/mcp_runtime_probe.gd"
 
 [display]
 
@@ -49,5 +50,6 @@ theme/default_font="res://assets/ui/Fonts/NotoSansSC-Regular.otf"
 textures/canvas_textures/default_texture_filter=0
 rendering_device/driver.windows="d3d12"
 renderer/rendering_method="mobile"
+2d/batching/uniform_set_cache_size=4098
 2d/snap/snap_2d_transforms_to_pixel=true
 2d/snap/snap_2d_vertices_to_pixel=true
