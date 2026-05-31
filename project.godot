@@ -22,7 +22,6 @@ GameConfig="*res://scripts/autoload/game_config.gd"
 EventBus="*res://scripts/autoload/event_bus.gd"
 AudioManager="*res://scripts/autoload/audio_manager.gd"
 LobbyState="*res://scripts/autoload/lobby_state.gd"
-MCPRuntimeProbe="*res://addons/godot_mcp/runtime/mcp_runtime_probe.gd"
 
 [display]
 
