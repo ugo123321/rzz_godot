@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cp6w1rfn7rcr6"
-path="res://.godot/imported/Grass Fill.png-03b6543390af62f79aefb6ed3965c337.ctex"
+uid="uid://c4nmdqjk84hab"
+path="res://.godot/imported/small_bg.png-e3d49fedff66e0cd06d87351020374cd.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://scenes/ui/Grass Fill.png"
-dest_files=["res://.godot/imported/Grass Fill.png-03b6543390af62f79aefb6ed3965c337.ctex"]
+source_file="res://assets/ui/battle/small_bg.png"
+dest_files=["res://.godot/imported/small_bg.png-e3d49fedff66e0cd06d87351020374cd.ctex"]
 
 [params]
 

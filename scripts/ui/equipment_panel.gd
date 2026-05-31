@@ -15,50 +15,75 @@ const SLOT_ORDER := [
 const SYNTH_SLOT_COUNT := 3
 const SYNTH_BUTTON_FONT_SIZE := 16
 const SYNTH_BUTTON_MIN_FONT_SIZE := 9
+const INVENTORY_COLUMNS := 5
+const INVENTORY_VISIBLE_ROWS := 4
+const INVENTORY_BASE_SLOTS := INVENTORY_COLUMNS * INVENTORY_VISIBLE_ROWS
+const INVENTORY_SLOT_TEX := preload("res://assets/ui/equipment/equipment_slot02.png")
+const BAG_SLOT_SCENE := preload("res://scenes/ui/bag_slot.tscn")
 
-var _gold_label: Label
-var _synth_gold_label: Label
-var _attr_summary_label: Label
-var _slot_buttons: Dictionary = {}
-var _inventory_grid: GridContainer
-var _inventory_empty_label: Label
-var _detail_popup: PopupPanel
-var _detail_icon: TextureRect
-var _detail_name_label: Label
-var _detail_level_label: Label
-var _detail_skill_text: RichTextLabel
-var _detail_tip_label: Label
-var _btn_equip: Button
-var _btn_unequip: Button
-var _btn_upgrade: Button
-var _details_popup: AcceptDialog
-var _details_label: Label
+const SLOT_BUTTON_NODES := {
+	"weapon": &"SlotWeapon",
+	"helmet": &"SlotHelmet",
+	"necklace": &"SlotNecklace",
+	"ring": &"SlotRing",
+	"armor": &"SlotArmor",
+	"shoes": &"SlotShoes",
+}
+
+@onready var _margin_frame: MarginContainer = $Frame/RootMargin
+@onready var _main_vbox: VBoxContainer = $Frame/RootMargin/BaseRoot
+@onready var _inventory_grid: GridContainer = $Frame/RootMargin/BaseRoot/BagScroll/InventoryGrid
+@onready var _inventory_empty_label: Label = $Frame/RootMargin/BaseRoot/InventoryEmptyLabel
+@onready var _battle_power_label: Label = $Frame/RootMargin/BaseRoot/UpperArea/StatsBlock/PowerRow/BattlePowerLabel
+@onready var _attack_label: Label = $Frame/RootMargin/BaseRoot/UpperArea/StatsBlock/SubStatsRow/AttackBox/Row/AttackLabel
+@onready var _hp_label: Label = $Frame/RootMargin/BaseRoot/UpperArea/StatsBlock/SubStatsRow/HpBox/Row/HpLabel
+@onready var _preview_viewport: SubViewport = $Frame/RootMargin/BaseRoot/UpperArea/CharacterRow/PreviewWrap/PreviewContainer/PreviewViewport
+@onready var _preview_sprite: AnimatedSprite2D = $Frame/RootMargin/BaseRoot/UpperArea/CharacterRow/PreviewWrap/PreviewContainer/PreviewViewport/PreviewRoot/PreviewSprite
+
+@onready var _synthesis_root: VBoxContainer = $Frame/SynthesisRoot
+@onready var _synth_gold_label: Label = $Frame/SynthesisRoot/TopRow/SynthGoldLabel
+@onready var _synth_result_slot: Button = $Frame/SynthesisRoot/TopPanel/TopMargin/TopVBox/ResultWrap/SynthResultSlot
+@onready var _synth_status_label: Label = $Frame/SynthesisRoot/TopPanel/TopMargin/TopVBox/SynthStatusLabel
+@onready var _synth_compose_button: Button = $Frame/SynthesisRoot/MidPanel/MidMargin/MidCenter/SynthComposeButton
+@onready var _synth_bag_grid: GridContainer = $Frame/SynthesisRoot/BagPanel/BagMargin/BagVBox/SynthBagScroll/SynthBagGrid
+@onready var _synth_bag_empty_label: Label = $Frame/SynthesisRoot/BagPanel/BagMargin/BagVBox/SynthBagEmptyLabel
+@onready var _synth_fly_layer: Control = $Frame/SynthFlyLayer
+@onready var _synth_toast: Label = $Frame/SynthToast
+
+@onready var _detail_popup: PopupPanel = $DetailPopup
+@onready var _detail_icon: TextureRect = $DetailPopup/Margin/VBox/Head/DetailIcon
+@onready var _detail_name_label: Label = $DetailPopup/Margin/VBox/Head/HeadText/DetailNameLabel
+@onready var _detail_level_label: Label = $DetailPopup/Margin/VBox/Head/HeadText/DetailLevelLabel
+@onready var _detail_skill_text: RichTextLabel = $DetailPopup/Margin/VBox/DetailSkillText
+@onready var _detail_tip_label: Label = $DetailPopup/Margin/VBox/DetailTipLabel
+@onready var _btn_equip: Button = $DetailPopup/Margin/VBox/ActionRow/BtnEquip
+@onready var _btn_unequip: Button = $DetailPopup/Margin/VBox/ActionRow/BtnUnequip
+@onready var _btn_upgrade: Button = $DetailPopup/Margin/VBox/ActionRow/BtnUpgrade
+@onready var _details_popup: AcceptDialog = $DetailsPopup
+@onready var _details_label: Label = $DetailsPopup/DetailsLabel
+
+var _synth_material_slots: Array[Button] = []
 
 var _icon_cache: Dictionary = {}
-var _preview_viewport: SubViewport
-var _preview_sprite: AnimatedSprite2D
 var _preview_state := "walk"
 var _preview_timer := 0.0
 var _current_detail_uid := -1
+var _slot_buttons: Dictionary = {}
 
-var _base_root: VBoxContainer
-var _synthesis_root: VBoxContainer
 var _is_synthesis_mode := false
 var _synth_material_uids := [-1, -1, -1]
 var _synth_target_def_id := ""
 var _synth_target_quality := -1
 var _synth_result_preview: Dictionary = {}
-var _synth_result_slot: Button
-var _synth_material_slots: Array[Button] = []
-var _synth_status_label: Label
-var _synth_compose_button: Button
-var _synth_bag_grid: GridContainer
-var _synth_bag_empty_label: Label
-var _synth_fly_layer: Control
-var _synth_toast: Label
 var _synth_toast_timer := 0.0
 var _synth_toast_duration := 1.9
 var _synth_toast_base_top := 78.0
+var _bag_slot_uids: Array[int] = []
+
+
+func _should_fill_parent() -> bool:
+	var parent_node := get_parent()
+	return parent_node is MarginContainer and parent_node.name == "Content"
 
 
 func _ui_scale() -> float:
@@ -69,32 +94,8 @@ func _scaled(v: float) -> float:
 	return v * _ui_scale()
 
 
-func _available_content_width() -> float:
-	var logical_w := GameConfig.get_logical_size().x
-	var main_margin := 32.0
-	var frame_margin := _scaled(16.0) * 2.0
-	var panel_margin := 16.0
-	return maxf(_scaled(280.0), logical_w - main_margin - frame_margin - panel_margin)
-
-
-func _slot_button_size() -> Vector2:
-	var preview_w := _scaled(158.0)
-	var h_sep := _scaled(10.0)
-	var grid_h_sep := _scaled(6.0)
-	var slots_area_w := maxf(_scaled(200.0), _available_content_width() - preview_w - h_sep)
-	var btn_w: float = floor((slots_area_w - grid_h_sep) * 0.5)
-	return Vector2(maxf(_scaled(72.0), btn_w), _scaled(86.0))
-
-
-func _inventory_button_size() -> Vector2:
-	var cols := 3
-	var h_sep := _scaled(6.0)
-	var btn_w: float = floor((_available_content_width() - h_sep * float(cols - 1)) / float(cols))
-	return Vector2(maxf(_scaled(96.0), btn_w), _scaled(100.0))
-
-
 func _synth_bag_button_size() -> Vector2:
-	return Vector2(_inventory_button_size().x, _scaled(68.0))
+	return Vector2(_scaled(123.0), _scaled(68.0))
 
 
 func _synth_material_slot_size() -> Vector2:
@@ -107,9 +108,7 @@ func _synth_result_slot_size() -> Vector2:
 
 func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	for child in get_children():
-		child.queue_free()
-	_build_ui()
+	_setup_scene_ui()
 	_connect_signals()
 	_refresh_all()
 	set_process(true)
@@ -125,343 +124,42 @@ func _connect_signals() -> void:
 		EventBus.gold_changed.connect(_on_gold_changed)
 
 
-func _build_ui() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
-	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	size_flags_vertical = Control.SIZE_EXPAND_FILL
+func _setup_scene_ui() -> void:
+	# 嵌入主菜单 Content 时铺满可用区域；单独打开场景时保持 688x1034，与运行时一致。
+	if _should_fill_parent():
+		set_anchors_preset(Control.PRESET_FULL_RECT)
+		size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		size_flags_vertical = Control.SIZE_EXPAND_FILL
 
-	var frame := MarginContainer.new()
-	frame.set_anchors_preset(Control.PRESET_FULL_RECT)
-	frame.add_theme_constant_override("margin_left", int(round(_scaled(16.0))))
-	frame.add_theme_constant_override("margin_top", int(round(_scaled(16.0))))
-	frame.add_theme_constant_override("margin_right", int(round(_scaled(16.0))))
-	frame.add_theme_constant_override("margin_bottom", int(round(_scaled(16.0))))
-	add_child(frame)
+	_synth_material_slots = [
+		$Frame/SynthesisRoot/TopPanel/TopMargin/TopVBox/MaterialRow/SynthMaterialSlot0,
+		$Frame/SynthesisRoot/TopPanel/TopMargin/TopVBox/MaterialRow/SynthMaterialSlot1,
+		$Frame/SynthesisRoot/TopPanel/TopMargin/TopVBox/MaterialRow/SynthMaterialSlot2,
+	]
+	for i in range(SYNTH_SLOT_COUNT):
+		var slot_btn := _synth_material_slots[i]
+		if slot_btn == null:
+			continue
+		slot_btn.pressed.connect(_on_synth_material_slot_pressed.bind(i))
 
-	_base_root = VBoxContainer.new()
-	_base_root.add_theme_constant_override("separation", 8)
-	frame.add_child(_base_root)
-
-	var top_bar := HBoxContainer.new()
-	top_bar.add_theme_constant_override("separation", 8)
-	_base_root.add_child(top_bar)
-
-	var panel_title := Label.new()
-	panel_title.text = "主角装备"
-	panel_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	top_bar.add_child(panel_title)
-
-	_gold_label = Label.new()
-	_gold_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	top_bar.add_child(_gold_label)
-
-	var upper := PanelContainer.new()
-	upper.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_base_root.add_child(upper)
-
-	var upper_margin := MarginContainer.new()
-	upper_margin.add_theme_constant_override("margin_left", 8)
-	upper_margin.add_theme_constant_override("margin_top", 8)
-	upper_margin.add_theme_constant_override("margin_right", 8)
-	upper_margin.add_theme_constant_override("margin_bottom", 8)
-	upper.add_child(upper_margin)
-
-	var upper_vbox := VBoxContainer.new()
-	upper_vbox.add_theme_constant_override("separation", 8)
-	upper_margin.add_child(upper_vbox)
-
-	var upper_content := HBoxContainer.new()
-	upper_content.add_theme_constant_override("separation", 10)
-	upper_vbox.add_child(upper_content)
-
-	var preview_box := VBoxContainer.new()
-	preview_box.custom_minimum_size = Vector2(_scaled(158.0), _scaled(208.0))
-	preview_box.add_theme_constant_override("separation", 6)
-	upper_content.add_child(preview_box)
-
-	var preview_title := Label.new()
-	preview_title.text = "主角预览"
-	preview_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	preview_box.add_child(preview_title)
-
-	var preview_container := SubViewportContainer.new()
-	preview_container.custom_minimum_size = Vector2(_scaled(156.0), _scaled(156.0))
-	preview_container.stretch = true
-	preview_box.add_child(preview_container)
-
-	_preview_viewport = SubViewport.new()
-	var preview_size := Vector2i(int(round(_scaled(156.0))), int(round(_scaled(156.0))))
-	_preview_viewport.size = preview_size
-	_preview_viewport.transparent_bg = true
-	_preview_viewport.disable_3d = true
-	_preview_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	preview_container.add_child(_preview_viewport)
-
-	var preview_root := Node2D.new()
-	_preview_viewport.add_child(preview_root)
-
-	_preview_sprite = AnimatedSprite2D.new()
-	_preview_sprite.position = Vector2(float(preview_size.x) * 0.5, float(preview_size.y) * 0.72)
-	preview_root.add_child(_preview_sprite)
+	_bind_slot_buttons()
+	_setup_inventory_slots()
 	_setup_preview_sprite()
 
-	var slots_box := VBoxContainer.new()
-	slots_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	slots_box.add_theme_constant_override("separation", 6)
-	upper_content.add_child(slots_box)
-
-	var slots_title := Label.new()
-	slots_title.text = "装备槽（点击查看详情）"
-	slots_box.add_child(slots_title)
-
-	var slots_grid := GridContainer.new()
-	slots_grid.columns = 2
-	slots_grid.add_theme_constant_override("h_separation", 6)
-	slots_grid.add_theme_constant_override("v_separation", 6)
-	slots_box.add_child(slots_grid)
-
-	for slot in SLOT_ORDER:
-		var btn := Button.new()
-		btn.custom_minimum_size = _slot_button_size()
-		btn.clip_text = true
-		btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
-		btn.pressed.connect(_on_slot_pressed.bind(slot))
-		slots_grid.add_child(btn)
-		_slot_buttons[slot] = btn
-
-	var stats_row := HBoxContainer.new()
-	stats_row.add_theme_constant_override("separation", 8)
-	upper_vbox.add_child(stats_row)
-
-	_attr_summary_label = Label.new()
-	_attr_summary_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_attr_summary_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	stats_row.add_child(_attr_summary_label)
-
-	var detail_btn := Button.new()
-	detail_btn.text = "详细信息"
-	detail_btn.pressed.connect(_show_attr_popup)
-	stats_row.add_child(detail_btn)
-
-	var lower := PanelContainer.new()
-	lower.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_base_root.add_child(lower)
-
-	var lower_margin := MarginContainer.new()
-	lower_margin.add_theme_constant_override("margin_left", 8)
-	lower_margin.add_theme_constant_override("margin_top", 8)
-	lower_margin.add_theme_constant_override("margin_right", 8)
-	lower_margin.add_theme_constant_override("margin_bottom", 8)
-	lower.add_child(lower_margin)
-
-	var lower_vbox := VBoxContainer.new()
-	lower_vbox.add_theme_constant_override("separation", 6)
-	lower_margin.add_child(lower_vbox)
-
-	var bag_title_row := HBoxContainer.new()
-	bag_title_row.add_theme_constant_override("separation", 8)
-	lower_vbox.add_child(bag_title_row)
-
-	var bag_title := Label.new()
-	bag_title.text = "背包（按品质/等级排序）"
-	bag_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bag_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	bag_title_row.add_child(bag_title)
-
-	var synth_btn := Button.new()
-	synth_btn.text = "合成"
-	synth_btn.pressed.connect(_open_synthesis_view)
-	bag_title_row.add_child(synth_btn)
-
-	var bag_scroll := ScrollContainer.new()
-	bag_scroll.custom_minimum_size = Vector2(0, _scaled(286.0))
-	bag_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	bag_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	lower_vbox.add_child(bag_scroll)
-
-	_inventory_grid = GridContainer.new()
-	_inventory_grid.columns = 3
-	_inventory_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_inventory_grid.add_theme_constant_override("h_separation", 6)
-	_inventory_grid.add_theme_constant_override("v_separation", 6)
-	bag_scroll.add_child(_inventory_grid)
-
-	_inventory_empty_label = Label.new()
-	_inventory_empty_label.text = "暂无装备，击败怪物可掉落装备。"
-	_inventory_empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lower_vbox.add_child(_inventory_empty_label)
-
-	_build_synthesis_ui(frame)
-	_build_detail_popup()
-	_build_attr_popup()
 	PixelUi.apply_ui_font_tree(self)
 	_apply_pixel_filter_tree(self)
 	_set_synthesis_mode(false)
 
 
-func _build_synthesis_ui(parent: Control) -> void:
-	_synthesis_root = VBoxContainer.new()
-	_synthesis_root.visible = false
-	_synthesis_root.add_theme_constant_override("separation", 8)
-	parent.add_child(_synthesis_root)
-
-	var top_row := HBoxContainer.new()
-	_synthesis_root.add_child(top_row)
-
-	var title := Label.new()
-	title.text = "装备合成"
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top_row.add_child(title)
-
-	_synth_gold_label = Label.new()
-	_synth_gold_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	top_row.add_child(_synth_gold_label)
-
-	var top_panel := PanelContainer.new()
-	_synthesis_root.add_child(top_panel)
-	var top_margin := MarginContainer.new()
-	top_margin.add_theme_constant_override("margin_left", 8)
-	top_margin.add_theme_constant_override("margin_top", 8)
-	top_margin.add_theme_constant_override("margin_right", 8)
-	top_margin.add_theme_constant_override("margin_bottom", 8)
-	top_panel.add_child(top_margin)
-
-	var top_vbox := VBoxContainer.new()
-	top_vbox.add_theme_constant_override("separation", 8)
-	top_margin.add_child(top_vbox)
-
-	var result_wrap := HBoxContainer.new()
-	result_wrap.alignment = BoxContainer.ALIGNMENT_CENTER
-	top_vbox.add_child(result_wrap)
-
-	_synth_result_slot = _create_synth_slot_button(_synth_result_slot_size())
-	_synth_result_slot.disabled = true
-	result_wrap.add_child(_synth_result_slot)
-
-	var material_row := HBoxContainer.new()
-	material_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	material_row.add_theme_constant_override("separation", 8)
-	top_vbox.add_child(material_row)
-
-	_synth_material_slots.clear()
-	for i in range(SYNTH_SLOT_COUNT):
-		var slot_btn := _create_synth_slot_button(_synth_material_slot_size())
-		slot_btn.pressed.connect(_on_synth_material_slot_pressed.bind(i))
-		material_row.add_child(slot_btn)
-		_synth_material_slots.append(slot_btn)
-
-	_synth_status_label = Label.new()
-	_synth_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_synth_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	top_vbox.add_child(_synth_status_label)
-
-	var mid_panel := PanelContainer.new()
-	_synthesis_root.add_child(mid_panel)
-	var mid_margin := MarginContainer.new()
-	mid_margin.add_theme_constant_override("margin_left", 8)
-	mid_margin.add_theme_constant_override("margin_top", 8)
-	mid_margin.add_theme_constant_override("margin_right", 8)
-	mid_margin.add_theme_constant_override("margin_bottom", 8)
-	mid_panel.add_child(mid_margin)
-	var mid_center := CenterContainer.new()
-	mid_margin.add_child(mid_center)
-
-	_synth_compose_button = Button.new()
-	_synth_compose_button.custom_minimum_size = Vector2(_scaled(170.0), _scaled(46.0))
-	_synth_compose_button.text = "合成"
-	_synth_compose_button.pressed.connect(_on_synth_compose_pressed)
-	mid_center.add_child(_synth_compose_button)
-
-	var bag_panel := PanelContainer.new()
-	bag_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_synthesis_root.add_child(bag_panel)
-	var bag_margin := MarginContainer.new()
-	bag_margin.add_theme_constant_override("margin_left", 8)
-	bag_margin.add_theme_constant_override("margin_top", 8)
-	bag_margin.add_theme_constant_override("margin_right", 8)
-	bag_margin.add_theme_constant_override("margin_bottom", 8)
-	bag_panel.add_child(bag_margin)
-
-	var bag_vbox := VBoxContainer.new()
-	bag_vbox.add_theme_constant_override("separation", 6)
-	bag_margin.add_child(bag_vbox)
-
-	var bag_title := Label.new()
-	bag_title.text = "背包（点击装备放入素材槽）"
-	bag_vbox.add_child(bag_title)
-
-	var bag_scroll := ScrollContainer.new()
-	bag_scroll.custom_minimum_size = Vector2(0, _scaled(220.0))
-	bag_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	bag_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	bag_vbox.add_child(bag_scroll)
-
-	_synth_bag_grid = GridContainer.new()
-	_synth_bag_grid.columns = 3
-	_synth_bag_grid.add_theme_constant_override("h_separation", 6)
-	_synth_bag_grid.add_theme_constant_override("v_separation", 6)
-	_synth_bag_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bag_scroll.add_child(_synth_bag_grid)
-
-	_synth_bag_empty_label = Label.new()
-	_synth_bag_empty_label.text = "背包暂无可用于合成的装备。"
-	_synth_bag_empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	bag_vbox.add_child(_synth_bag_empty_label)
-
-	var bottom_row := HBoxContainer.new()
-	bottom_row.alignment = BoxContainer.ALIGNMENT_BEGIN
-	_synthesis_root.add_child(bottom_row)
-	var back_btn := Button.new()
-	back_btn.text = "返回"
-	back_btn.custom_minimum_size = Vector2(_scaled(130.0), _scaled(40.0))
-	back_btn.pressed.connect(_close_synthesis_view)
-	bottom_row.add_child(back_btn)
-
-	_synth_toast = Label.new()
-	_synth_toast.visible = false
-	_synth_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_synth_toast.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_synth_toast.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	_synth_toast.offset_left = -186.0
-	_synth_toast.offset_top = _synth_toast_base_top
-	_synth_toast.offset_right = 186.0
-	_synth_toast.offset_bottom = _synth_toast_base_top + 42.0
-	_synth_toast.modulate = Color("#fff4be")
-	_synth_toast.add_theme_font_size_override("font_size", 16)
-	_synth_toast.add_theme_color_override("font_color", Color("#fff4be"))
-	_synth_toast.add_theme_color_override("font_outline_color", Color("#5a3310"))
-	_synth_toast.add_theme_constant_override("outline_size", 2)
-	_synth_toast.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.4))
-	_synth_toast.add_theme_constant_override("shadow_offset_x", 0)
-	_synth_toast.add_theme_constant_override("shadow_offset_y", 1)
-	var toast_style := StyleBoxFlat.new()
-	toast_style.bg_color = Color(0.16, 0.10, 0.03, 0.9)
-	toast_style.border_color = Color("#ffd166")
-	toast_style.set_border_width_all(2)
-	toast_style.set_corner_radius_all(6)
-	_synth_toast.add_theme_stylebox_override("normal", toast_style)
-	parent.add_child(_synth_toast)
-
-	_synth_fly_layer = Control.new()
-	_synth_fly_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_synth_fly_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
-	parent.add_child(_synth_fly_layer)
-
-
-func _create_synth_slot_button(min_size: Vector2) -> Button:
-	var btn := Button.new()
-	btn.custom_minimum_size = min_size
-	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
-	btn.clip_text = true
-	btn.text = "空"
-	return btn
+func _bind_slot_buttons() -> void:
+	_slot_buttons.clear()
+	for slot in SLOT_ORDER:
+		var node_name: StringName = SLOT_BUTTON_NODES.get(slot, &"")
+		var btn := find_child(str(node_name), true, false) as TextureButton
+		if btn == null:
+			continue
+		_slot_buttons[slot] = btn
+		btn.pressed.connect(_on_slot_pressed.bind(slot))
 
 
 func _apply_button_text_fit(
@@ -522,95 +220,6 @@ func _setup_preview_sprite() -> void:
 	_preview_timer = randf_range(1.8, 3.2)
 
 
-func _build_detail_popup() -> void:
-	_detail_popup = PopupPanel.new()
-	_detail_popup.size = Vector2i(340, 360)
-	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.165, 0.141, 0.125, 1.0)
-	panel_style.border_color = Color("#c8b080")
-	panel_style.set_border_width_all(2)
-	_detail_popup.add_theme_stylebox_override("panel", panel_style)
-	add_child(_detail_popup)
-
-	var margin := MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 10)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_right", 10)
-	margin.add_theme_constant_override("margin_bottom", 10)
-	_detail_popup.add_child(margin)
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	margin.add_child(vbox)
-
-	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", 8)
-	vbox.add_child(head)
-
-	_detail_icon = TextureRect.new()
-	_detail_icon.custom_minimum_size = Vector2(46, 46)
-	_detail_icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-	_detail_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	head.add_child(_detail_icon)
-
-	var head_text := VBoxContainer.new()
-	head_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(head_text)
-
-	_detail_name_label = Label.new()
-	head_text.add_child(_detail_name_label)
-
-	_detail_level_label = Label.new()
-	head_text.add_child(_detail_level_label)
-
-	_detail_skill_text = RichTextLabel.new()
-	_detail_skill_text.bbcode_enabled = true
-	_detail_skill_text.custom_minimum_size = Vector2(0, 175)
-	_detail_skill_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_detail_skill_text.scroll_active = true
-	vbox.add_child(_detail_skill_text)
-
-	_detail_tip_label = Label.new()
-	_detail_tip_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	vbox.add_child(_detail_tip_label)
-
-	var action_row := HBoxContainer.new()
-	action_row.add_theme_constant_override("separation", 6)
-	vbox.add_child(action_row)
-
-	_btn_equip = Button.new()
-	_btn_equip.text = "穿戴"
-	_btn_equip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_btn_equip.pressed.connect(_on_detail_equip)
-	action_row.add_child(_btn_equip)
-
-	_btn_unequip = Button.new()
-	_btn_unequip.text = "卸下"
-	_btn_unequip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_btn_unequip.pressed.connect(_on_detail_unequip)
-	action_row.add_child(_btn_unequip)
-
-	_btn_upgrade = Button.new()
-	_btn_upgrade.text = "升级"
-	_btn_upgrade.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_btn_upgrade.pressed.connect(_on_detail_upgrade)
-	action_row.add_child(_btn_upgrade)
-
-
-func _build_attr_popup() -> void:
-	_details_popup = AcceptDialog.new()
-	_details_popup.title = "主角详细属性"
-	_details_popup.size = Vector2i(320, 300)
-	add_child(_details_popup)
-	_details_label = Label.new()
-	_details_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_details_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_details_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_details_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_details_popup.add_child(_details_label)
-
-
 func _apply_pixel_filter_tree(root: Node) -> void:
 	if root is CanvasItem:
 		(root as CanvasItem).texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -618,16 +227,24 @@ func _apply_pixel_filter_tree(root: Node) -> void:
 		_apply_pixel_filter_tree(child)
 
 
+func _on_synthesis_pressed() -> void:
+	_open_synthesis_view()
+
+
 func _set_synthesis_mode(enable: bool) -> void:
 	_is_synthesis_mode = enable
-	_base_root.visible = not enable
-	_synthesis_root.visible = enable
+	if _margin_frame != null:
+		_margin_frame.visible = not enable
+	if _synthesis_root != null:
+		_synthesis_root.visible = enable
 	_set_main_menu_tabs_visible(not enable)
 	if not enable:
-		_synth_toast.visible = false
+		if _synth_toast != null:
+			_synth_toast.visible = false
 		_synth_toast_timer = 0.0
 	if enable:
-		_detail_popup.hide()
+		if _detail_popup != null:
+			_detail_popup.hide()
 		_current_detail_uid = -1
 		_refresh_synthesis_view()
 
@@ -686,60 +303,124 @@ func _refresh_all() -> void:
 
 func _refresh_gold() -> void:
 	var text := "金币：%d" % int(LobbyState.gold)
-	if _gold_label:
-		_gold_label.text = text
 	if _synth_gold_label:
 		_synth_gold_label.text = text
 
 
 func _refresh_slots() -> void:
 	for slot in SLOT_ORDER:
-		var btn := _slot_buttons.get(slot, null) as Button
+		var btn := _slot_buttons.get(slot, null) as TextureButton
 		if btn == null:
 			continue
+		var icon_rect := btn.get_node_or_null("ItemIcon") as TextureRect
 		var item := LobbyState.get_equipped_item(slot)
 		if item.is_empty():
-			btn.icon = null
-			btn.text = "%s\n(空)" % LobbyState.get_slot_display_name(slot)
+			if icon_rect != null:
+				icon_rect.visible = false
+				icon_rect.texture = null
 			btn.modulate = Color(1, 1, 1, 1)
 			continue
 		var quality := int(item.get("quality", 0))
-		btn.icon = _get_item_icon(item)
-		btn.text = "%s  Lv.%d" % [LobbyState.get_item_name(item), int(item.get("level", 1))]
+		var icon := _get_item_icon(item)
+		if icon_rect != null:
+			icon_rect.texture = icon
+			icon_rect.visible = icon != null
 		btn.modulate = LobbyState.get_quality_color(quality)
 
 
 func _refresh_attributes() -> void:
+	if _battle_power_label == null or _attack_label == null or _hp_label == null:
+		return
 	var attrs := LobbyState.get_player_preview_attributes()
-	_attr_summary_label.text = "攻击: %d    生命: %d    战力: %d" % [
-		int(round(float(attrs.get("attack", 0.0)))),
-		int(attrs.get("hp", 0)),
-		int(attrs.get("battle_power", 0)),
-	]
+	_battle_power_label.text = str(int(attrs.get("battle_power", 0)))
+	_attack_label.text = str(int(round(float(attrs.get("attack", 0.0)))))
+	_hp_label.text = str(int(attrs.get("hp", 0)))
+
+
+func _setup_inventory_slots() -> void:
+	if _inventory_grid == null:
+		return
+	_ensure_inventory_slot_count(INVENTORY_BASE_SLOTS)
+	for i in range(_inventory_grid.get_child_count()):
+		var btn := _inventory_grid.get_child(i) as TextureButton
+		if btn == null:
+			continue
+		btn.texture_normal = INVENTORY_SLOT_TEX
+		btn.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+		btn.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		btn.action_mode = BaseButton.ACTION_MODE_BUTTON_RELEASE
+		if not btn.pressed.is_connected(_on_bag_slot_pressed):
+			btn.pressed.connect(_on_bag_slot_pressed.bind(i))
+
+
+func _ensure_inventory_slot_count(count: int) -> void:
+	if _inventory_grid == null:
+		return
+	while _inventory_grid.get_child_count() < count:
+		var index := _inventory_grid.get_child_count()
+		var btn := BAG_SLOT_SCENE.instantiate() as TextureButton
+		if btn == null:
+			break
+		btn.name = "BagSlot%02d" % index
+		btn.action_mode = BaseButton.ACTION_MODE_BUTTON_RELEASE
+		btn.pressed.connect(_on_bag_slot_pressed.bind(index))
+		_inventory_grid.add_child(btn)
+	while _inventory_grid.get_child_count() > count:
+		_inventory_grid.get_child(_inventory_grid.get_child_count() - 1).queue_free()
+
+
+func _apply_item_to_bag_slot(btn: TextureButton, item: Dictionary, uid: int) -> void:
+	var icon_rect := btn.get_node_or_null("ItemIcon") as TextureRect
+	var icon := _get_item_icon(item)
+	if icon_rect != null:
+		icon_rect.texture = icon
+		icon_rect.visible = icon != null
+	btn.modulate = LobbyState.get_quality_color(int(item.get("quality", 0)))
+	btn.set_meta("bag_uid", uid)
+
+
+func _apply_empty_bag_slot(btn: TextureButton) -> void:
+	var icon_rect := btn.get_node_or_null("ItemIcon") as TextureRect
+	if icon_rect != null:
+		icon_rect.texture = null
+		icon_rect.visible = false
+	btn.modulate = Color(1, 1, 1, 1)
+	btn.set_meta("bag_uid", -1)
+
+
+func _on_bag_slot_pressed(slot_index: int) -> void:
+	var bag_scroll := get_node_or_null("Frame/RootMargin/BaseRoot/BagScroll") as SpringScrollContainer
+	if bag_scroll != null and bag_scroll.was_scroll_gesture():
+		return
+	if slot_index < 0 or slot_index >= _bag_slot_uids.size():
+		return
+	var uid := int(_bag_slot_uids[slot_index])
+	if uid >= 0:
+		_open_item_detail(uid)
 
 
 func _refresh_inventory() -> void:
-	for child in _inventory_grid.get_children():
-		child.queue_free()
+	if _inventory_grid == null:
+		return
 	var inventory := LobbyState.get_inventory_sorted()
-	_inventory_empty_label.visible = inventory.is_empty()
-	for item in inventory:
-		var uid := int(item.get("uid", -1))
-		var btn := Button.new()
-		btn.custom_minimum_size = _inventory_button_size()
-		btn.icon = _get_item_icon(item)
-		btn.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		btn.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
-		var quality := int(item.get("quality", 0))
-		var name := LobbyState.get_item_name(item)
-		btn.text = "%s Lv.%d" % [
-			name,
-			int(item.get("level", 1)),
-		]
-		btn.modulate = LobbyState.get_quality_color(quality)
-		btn.pressed.connect(_open_item_detail.bind(uid))
-		_inventory_grid.add_child(btn)
+	var slot_count := maxi(INVENTORY_BASE_SLOTS, inventory.size())
+	_ensure_inventory_slot_count(slot_count)
+	_bag_slot_uids.resize(slot_count)
+	for i in range(slot_count):
+		var btn := _inventory_grid.get_child(i) as TextureButton
+		if btn == null:
+			continue
+		if i < inventory.size():
+			var item: Dictionary = inventory[i]
+			var uid := int(item.get("uid", -1))
+			_bag_slot_uids[i] = uid
+			_apply_item_to_bag_slot(btn, item, uid)
+		else:
+			_bag_slot_uids[i] = -1
+			_apply_empty_bag_slot(btn)
+	if _inventory_empty_label != null:
+		_inventory_empty_label.visible = false
 
 
 func _get_item_icon(item: Dictionary) -> Texture2D:
@@ -763,6 +444,8 @@ func _on_slot_pressed(slot: String) -> void:
 
 
 func _open_item_detail(uid: int) -> void:
+	if _detail_popup == null or _btn_equip == null or _btn_unequip == null or _btn_upgrade == null:
+		return
 	var item := LobbyState.get_item_by_uid(uid)
 	if item.is_empty():
 		return
@@ -932,10 +615,13 @@ func _refresh_synthesis_result_slot() -> void:
 
 
 func _refresh_synthesis_bag() -> void:
+	if _synth_bag_grid == null:
+		return
 	for child in _synth_bag_grid.get_children():
 		child.queue_free()
 	var inventory := LobbyState.get_inventory_sorted()
-	_synth_bag_empty_label.visible = inventory.is_empty()
+	if _synth_bag_empty_label != null:
+		_synth_bag_empty_label.visible = inventory.is_empty()
 	var has_empty_slot := _first_empty_synth_slot() >= 0
 	for item in inventory:
 		var uid := int(item.get("uid", -1))

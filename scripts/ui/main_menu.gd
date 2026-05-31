@@ -69,12 +69,12 @@ const DEFAULT_TAB := Tab.STAGE
 @onready var _tab_labels: Array[Label] = [
 	%TabGacha/TabLabel, %TabEquipment/TabLabel, %TabStage/TabLabel, %TabDungeon/TabLabel, %TabAchievement/TabLabel,
 ]
-@onready var _top_gold_label: Label = %TopBar/BarRow/GoldBar/Value
-@onready var _top_gem_label: Label = %TopBar/BarRow/GemBar/Value
-@onready var _top_gold_bg: TextureRect = %TopBar/BarRow/GoldBar/Bg
-@onready var _top_gem_bg: TextureRect = %TopBar/BarRow/GemBar/Bg
-@onready var _top_gold_icon: TextureRect = %TopBar/BarRow/GoldBar/Icon
-@onready var _top_gem_icon: TextureRect = %TopBar/BarRow/GemBar/Icon
+@onready var _top_gold_label: Label = $TopBar/GoldBar/Value
+@onready var _top_gem_label: Label = $TopBar/GemBar/Value
+@onready var _top_gold_bg: TextureRect = $TopBar/GoldBar/Bg
+@onready var _top_gem_bg: TextureRect = $TopBar/GemBar/Bg
+@onready var _top_gold_icon: TextureRect = $TopBar/GoldBar/Icon
+@onready var _top_gem_icon: TextureRect = $TopBar/GemBar/Icon
 @onready var _panels: Array[Control] = [
 	%GachaPanel, %EquipmentPanel, %StagePanel, %DungeonPanel, %AchievementPanel,
 ]
@@ -315,7 +315,9 @@ func _on_tab_pressed(tab_index: int) -> void:
 func _select_tab(tab_index: int) -> void:
 	_current_tab = clampi(tab_index, 0, TAB_COUNT - 1)
 	for i in TAB_COUNT:
-		_panels[i].visible = i == _current_tab
+		var panel := _panels[i] if i < _panels.size() else null
+		if panel != null:
+			panel.visible = i == _current_tab
 	_apply_tab_button_visuals()
 	call_deferred("_refresh_tab_layout_state")
 	call_deferred("_update_tab_focus")

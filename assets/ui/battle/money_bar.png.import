@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ck5mw8hs28eom"
-path="res://.godot/imported/full_bg.png-44aa98b36acbbcd45518ff78dc65dffd.ctex"
+uid="uid://dvgbb5t56b1gy"
+path="res://.godot/imported/money_bar.png-390755b9bd33021adab4fd58b256d905.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/equipment/full_bg.png"
-dest_files=["res://.godot/imported/full_bg.png-44aa98b36acbbcd45518ff78dc65dffd.ctex"]
+source_file="res://assets/ui/battle/money_bar.png"
+dest_files=["res://.godot/imported/money_bar.png-390755b9bd33021adab4fd58b256d905.ctex"]
 
 [params]
 
