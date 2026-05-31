@@ -35,6 +35,7 @@ border_width_bottom = 2
 border_color = Color(0.784314, 0.690196, 0.501961, 1)
 
 [node name="EquipmentPanel" type="Control" unique_id=1769657713]
+texture_filter = 1
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -42,6 +43,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_script")
+preview_sprite_scale = 5.0
 
 [node name="Frame" type="Control" parent="." unique_id=339340348]
 layout_mode = 1
@@ -78,12 +80,12 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = 120.0
+offset_top = 88.0
 offset_bottom = -5.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 20
+theme_override_constants/margin_top = 0
 theme_override_constants/margin_right = 20
 theme_override_constants/margin_bottom = 20
 
@@ -105,13 +107,14 @@ theme_override_constants/separation = 60
 alignment = 1
 
 [node name="LeftSlots" type="VBoxContainer" parent="Frame/RootMargin/BaseRoot/UpperArea/CharacterRow" unique_id=2050259587]
+custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 1
 
 [node name="SlotWeapon" type="TextureButton" parent="Frame/RootMargin/BaseRoot/UpperArea/CharacterRow/LeftSlots" unique_id=634181386]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(92, 92)
+custom_minimum_size = Vector2(120, 120)
 layout_mode = 2
 texture_normal = ExtResource("3_equip_slot")
 ignore_texture_size = true
@@ -135,7 +138,7 @@ stretch_mode = 5
 
 [node name="SlotArmor" type="TextureButton" parent="Frame/RootMargin/BaseRoot/UpperArea/CharacterRow/LeftSlots" unique_id=1006209893]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(92, 92)
+custom_minimum_size = Vector2(120, 120)
 layout_mode = 2
 texture_normal = ExtResource("3_equip_slot")
 ignore_texture_size = true
@@ -159,7 +162,7 @@ stretch_mode = 5
 
 [node name="SlotShoes" type="TextureButton" parent="Frame/RootMargin/BaseRoot/UpperArea/CharacterRow/LeftSlots" unique_id=542862201]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(92, 92)
+custom_minimum_size = Vector2(120, 120)
 layout_mode = 2
 texture_normal = ExtResource("3_equip_slot")
 ignore_texture_size = true
@@ -192,10 +195,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -90.0
-offset_top = -120.0
-offset_right = 90.0
-offset_bottom = 100.0
+offset_left = -139.0
+offset_top = -139.0
+offset_right = 135.0
+offset_bottom = 145.0
 grow_horizontal = 2
 grow_vertical = 2
 stretch = true
@@ -204,14 +207,14 @@ stretch = true
 unique_name_in_owner = true
 transparent_bg = true
 handle_input_locally = false
-size = Vector2i(180, 220)
+size = Vector2i(274, 284)
 render_target_update_mode = 4
 
 [node name="PreviewRoot" type="Node2D" parent="Frame/RootMargin/BaseRoot/UpperArea/CharacterRow/PreviewWrap/PreviewContainer/PreviewViewport" unique_id=676659860]
 
 [node name="PreviewSprite" type="AnimatedSprite2D" parent="Frame/RootMargin/BaseRoot/UpperArea/CharacterRow/PreviewWrap/PreviewContainer/PreviewViewport/PreviewRoot" unique_id=223466037]
 unique_name_in_owner = true
-position = Vector2(90, 158.4)
+position = Vector2(135, 145)
 
 [node name="RightSlots" type="VBoxContainer" parent="Frame/RootMargin/BaseRoot/UpperArea/CharacterRow" unique_id=454337851]
 layout_mode = 2
@@ -220,7 +223,7 @@ alignment = 1
 
 [node name="SlotHelmet" type="TextureButton" parent="Frame/RootMargin/BaseRoot/UpperArea/CharacterRow/RightSlots" unique_id=47639150]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(92, 92)
+custom_minimum_size = Vector2(120, 120)
 layout_mode = 2
 texture_normal = ExtResource("3_equip_slot")
 ignore_texture_size = true
@@ -244,7 +247,7 @@ stretch_mode = 5
 
 [node name="SlotNecklace" type="TextureButton" parent="Frame/RootMargin/BaseRoot/UpperArea/CharacterRow/RightSlots" unique_id=1418437364]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(92, 92)
+custom_minimum_size = Vector2(120, 120)
 layout_mode = 2
 texture_normal = ExtResource("3_equip_slot")
 ignore_texture_size = true
@@ -268,7 +271,7 @@ stretch_mode = 5
 
 [node name="SlotRing" type="TextureButton" parent="Frame/RootMargin/BaseRoot/UpperArea/CharacterRow/RightSlots" unique_id=783815904]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(92, 92)
+custom_minimum_size = Vector2(120, 120)
 layout_mode = 2
 texture_normal = ExtResource("3_equip_slot")
 ignore_texture_size = true

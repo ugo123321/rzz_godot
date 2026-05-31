@@ -1,3 +1,4 @@
+@tool
 extends Control
 class_name EquipmentPanelView
 
@@ -21,6 +22,13 @@ const INVENTORY_BASE_SLOTS := INVENTORY_COLUMNS * INVENTORY_VISIBLE_ROWS
 const INVENTORY_SLOT_TEX := preload("res://assets/ui/equipment/equipment_slot02.png")
 const BAG_SLOT_SCENE := preload("res://scenes/ui/bag_slot.tscn")
 
+## 装备页主角预览缩放（与战斗 sprite_scale 独立）。选 EquipmentPanel 根节点调节；步进 0.1。
+@export_range(0.5, 8.0, 0.1, "or_greater") var preview_sprite_scale: float = 2.0:
+	set(value):
+		preview_sprite_scale = value
+		if is_node_ready() or Engine.is_editor_hint():
+			_apply_preview_sprite_scale()
+
 const SLOT_BUTTON_NODES := {
 	"weapon": &"SlotWeapon",
 	"helmet": &"SlotHelmet",
@@ -38,7 +46,7 @@ const SLOT_BUTTON_NODES := {
 @onready var _attack_label: Label = $Frame/RootMargin/BaseRoot/UpperArea/StatsBlock/SubStatsRow/AttackBox/Row/AttackLabel
 @onready var _hp_label: Label = $Frame/RootMargin/BaseRoot/UpperArea/StatsBlock/SubStatsRow/HpBox/Row/HpLabel
 @onready var _preview_viewport: SubViewport = $Frame/RootMargin/BaseRoot/UpperArea/CharacterRow/PreviewWrap/PreviewContainer/PreviewViewport
-@onready var _preview_sprite: AnimatedSprite2D = $Frame/RootMargin/BaseRoot/UpperArea/CharacterRow/PreviewWrap/PreviewContainer/PreviewViewport/PreviewRoot/PreviewSprite
+@onready var _preview_sprite: AnimatedSprite2D = %PreviewSprite
 
 @onready var _synthesis_root: VBoxContainer = $Frame/SynthesisRoot
 @onready var _synth_gold_label: Label = $Frame/SynthesisRoot/TopRow/SynthGoldLabel
@@ -108,6 +116,9 @@ func _synth_result_slot_size() -> Vector2:
 
 func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	if Engine.is_editor_hint():
+		call_deferred("_setup_preview_sprite")
+		return
 	_setup_scene_ui()
 	_connect_signals()
 	_refresh_all()
@@ -203,21 +214,38 @@ func _apply_button_text_fit(
 
 
 func _setup_preview_sprite() -> void:
-	if _preview_sprite == null:
+	var sprite := _get_preview_sprite()
+	if sprite == null:
 		return
 	var folder := str(GameConfig.get_player_value("character_folder", "Swordsman"))
 	var prefix := str(GameConfig.get_player_value("sprite_prefix", "Swordsman"))
-	_preview_sprite.sprite_frames = SpriteHelper.build_character_frames(folder, prefix)
-	SpriteHelper.apply_pixel_art(_preview_sprite)
-	if _preview_sprite.sprite_frames != null:
-		var scale_val := float(GameConfig.get_player_value("sprite_scale", 1.0))
-		_preview_sprite.scale = Vector2.ONE * SpriteHelper.pixel_scale(scale_val)
-		if _preview_sprite.sprite_frames.has_animation(SpriteHelper.ANIM_WALK):
-			_preview_sprite.play(SpriteHelper.ANIM_WALK)
-		elif _preview_sprite.sprite_frames.has_animation(SpriteHelper.ANIM_IDLE):
-			_preview_sprite.play(SpriteHelper.ANIM_IDLE)
-	_preview_state = "walk"
-	_preview_timer = randf_range(1.8, 3.2)
+	sprite.sprite_frames = SpriteHelper.build_character_frames(folder, prefix)
+	SpriteHelper.apply_pixel_art(sprite)
+	if sprite.sprite_frames != null:
+		if sprite.sprite_frames.has_animation(SpriteHelper.ANIM_WALK):
+			sprite.play(SpriteHelper.ANIM_WALK)
+		elif sprite.sprite_frames.has_animation(SpriteHelper.ANIM_IDLE):
+			sprite.play(SpriteHelper.ANIM_IDLE)
+	_apply_preview_sprite_scale()
+	if not Engine.is_editor_hint():
+		_preview_state = "walk"
+		_preview_timer = randf_range(1.8, 3.2)
+
+
+func _get_preview_sprite() -> AnimatedSprite2D:
+	if _preview_sprite != null:
+		return _preview_sprite
+	if not is_inside_tree():
+		return null
+	return get_node_or_null("%PreviewSprite") as AnimatedSprite2D
+
+
+func _apply_preview_sprite_scale() -> void:
+	var sprite := _get_preview_sprite()
+	if sprite == null or sprite.sprite_frames == null:
+		return
+	var s := maxf(0.1, preview_sprite_scale)
+	sprite.scale = Vector2.ONE * s
 
 
 func _apply_pixel_filter_tree(root: Node) -> void:
