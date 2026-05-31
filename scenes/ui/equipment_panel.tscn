@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" uid="uid://d01uyh7ncexiv" path="res://scripts/ui/equipment_panel.gd" id="1_script"]
 [ext_resource type="Texture2D" uid="uid://ck5mw8hs28eom" path="res://assets/ui/equipment/full_bg.png" id="2_full_bg"]
-[ext_resource type="Texture2D" uid="uid://c4nmdqjk84hab" path="res://assets/ui/battle/small_bg.png" id="3_04rni"]
 [ext_resource type="Texture2D" uid="uid://delski8cut3gg" path="res://assets/ui/equipment/equipment_slot01.png" id="3_equip_slot"]
 [ext_resource type="Texture2D" uid="uid://dqomdk6d5w47n" path="res://assets/ui/equipment/power_icon.png" id="4_power"]
 [ext_resource type="Texture2D" uid="uid://bpoplkfh8yv5q" path="res://assets/ui/equipment/detail_icon.png" id="5_detail"]
@@ -14,17 +13,8 @@
 [ext_resource type="Script" uid="uid://dag4k5g7htdb2" path="res://scripts/ui/spring_scroll_container.gd" id="12_spring_scroll"]
 [ext_resource type="PackedScene" uid="uid://cum4btq370jaj" path="res://scenes/ui/bag_slot.tscn" id="13_bag_slot"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_toast"]
-bg_color = Color(0.16, 0.1, 0.03, 0.9)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(1, 0.819608, 0.4, 1)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_hpsfa"]
+load_path = "res://.godot/imported/small_bg.png-e3d49fedff66e0cd06d87351020374cd.ctex"
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_detail"]
 bg_color = Color(0.165, 0.141, 0.125, 1)
@@ -71,7 +61,7 @@ layout_mode = 0
 offset_top = 626.0
 offset_right = 720.0
 offset_bottom = 1290.0
-texture = ExtResource("3_04rni")
+texture = SubResource("CompressedTexture2D_hpsfa")
 expand_mode = 1
 
 [node name="RootMargin" type="MarginContainer" parent="Frame" unique_id=890793279]
@@ -546,182 +536,6 @@ theme_override_colors/font_color = Color(0.415686, 0.352941, 0.282353, 1)
 text = "暂无装备，击败怪物可掉落装备。"
 horizontal_alignment = 1
 
-[node name="SynthesisRoot" type="VBoxContainer" parent="Frame" unique_id=259591615]
-unique_name_in_owner = true
-visible = false
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/separation = 8
-
-[node name="TopRow" type="HBoxContainer" parent="Frame/SynthesisRoot" unique_id=841818280]
-layout_mode = 2
-
-[node name="Title" type="Label" parent="Frame/SynthesisRoot/TopRow" unique_id=374156945]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "装备合成"
-
-[node name="SynthGoldLabel" type="Label" parent="Frame/SynthesisRoot/TopRow" unique_id=1238762322]
-unique_name_in_owner = true
-layout_mode = 2
-horizontal_alignment = 2
-
-[node name="TopPanel" type="PanelContainer" parent="Frame/SynthesisRoot" unique_id=1756248478]
-layout_mode = 2
-
-[node name="TopMargin" type="MarginContainer" parent="Frame/SynthesisRoot/TopPanel" unique_id=1409413842]
-layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 8
-
-[node name="TopVBox" type="VBoxContainer" parent="Frame/SynthesisRoot/TopPanel/TopMargin" unique_id=1480893786]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="ResultWrap" type="HBoxContainer" parent="Frame/SynthesisRoot/TopPanel/TopMargin/TopVBox" unique_id=2045356542]
-layout_mode = 2
-alignment = 1
-
-[node name="SynthResultSlot" type="Button" parent="Frame/SynthesisRoot/TopPanel/TopMargin/TopVBox/ResultWrap" unique_id=1737107749]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(138, 72)
-layout_mode = 2
-disabled = true
-text = "合成结果"
-
-[node name="MaterialRow" type="HBoxContainer" parent="Frame/SynthesisRoot/TopPanel/TopMargin/TopVBox" unique_id=15743491]
-layout_mode = 2
-theme_override_constants/separation = 8
-alignment = 1
-
-[node name="SynthMaterialSlot0" type="Button" parent="Frame/SynthesisRoot/TopPanel/TopMargin/TopVBox/MaterialRow" unique_id=1827882445]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(94, 68)
-layout_mode = 2
-text = "素材槽"
-
-[node name="SynthMaterialSlot1" type="Button" parent="Frame/SynthesisRoot/TopPanel/TopMargin/TopVBox/MaterialRow" unique_id=378957076]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(94, 68)
-layout_mode = 2
-text = "素材槽"
-
-[node name="SynthMaterialSlot2" type="Button" parent="Frame/SynthesisRoot/TopPanel/TopMargin/TopVBox/MaterialRow" unique_id=1059639364]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(94, 68)
-layout_mode = 2
-text = "素材槽"
-
-[node name="SynthStatusLabel" type="Label" parent="Frame/SynthesisRoot/TopPanel/TopMargin/TopVBox" unique_id=783513197]
-unique_name_in_owner = true
-layout_mode = 2
-text = "将 3 个相同装备放入素材槽即可合成。"
-horizontal_alignment = 1
-autowrap_mode = 3
-
-[node name="MidPanel" type="PanelContainer" parent="Frame/SynthesisRoot" unique_id=570472048]
-layout_mode = 2
-
-[node name="MidMargin" type="MarginContainer" parent="Frame/SynthesisRoot/MidPanel" unique_id=501744723]
-layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 8
-
-[node name="MidCenter" type="CenterContainer" parent="Frame/SynthesisRoot/MidPanel/MidMargin" unique_id=1363555763]
-layout_mode = 2
-
-[node name="SynthComposeButton" type="Button" parent="Frame/SynthesisRoot/MidPanel/MidMargin/MidCenter" unique_id=165527384]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(170, 46)
-layout_mode = 2
-text = "合成"
-
-[node name="BagPanel" type="PanelContainer" parent="Frame/SynthesisRoot" unique_id=1654354626]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="BagMargin" type="MarginContainer" parent="Frame/SynthesisRoot/BagPanel" unique_id=293899560]
-layout_mode = 2
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 8
-
-[node name="BagVBox" type="VBoxContainer" parent="Frame/SynthesisRoot/BagPanel/BagMargin" unique_id=986335039]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="BagTitle" type="Label" parent="Frame/SynthesisRoot/BagPanel/BagMargin/BagVBox" unique_id=822626410]
-layout_mode = 2
-text = "背包（点击装备放入素材槽）"
-
-[node name="SynthBagScroll" type="ScrollContainer" parent="Frame/SynthesisRoot/BagPanel/BagMargin/BagVBox" unique_id=965170181]
-layout_mode = 2
-size_flags_vertical = 3
-horizontal_scroll_mode = 3
-
-[node name="SynthBagGrid" type="GridContainer" parent="Frame/SynthesisRoot/BagPanel/BagMargin/BagVBox/SynthBagScroll" unique_id=732896910]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/h_separation = 6
-theme_override_constants/v_separation = 6
-columns = 3
-
-[node name="SynthBagEmptyLabel" type="Label" parent="Frame/SynthesisRoot/BagPanel/BagMargin/BagVBox" unique_id=335381572]
-unique_name_in_owner = true
-layout_mode = 2
-text = "背包暂无可用于合成的装备。"
-horizontal_alignment = 1
-
-[node name="BottomRow" type="HBoxContainer" parent="Frame/SynthesisRoot" unique_id=1886291653]
-layout_mode = 2
-
-[node name="SynthBackButton" type="Button" parent="Frame/SynthesisRoot/BottomRow" unique_id=2035928245]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(130, 40)
-layout_mode = 2
-text = "返回"
-
-[node name="SynthFlyLayer" type="Control" parent="Frame" unique_id=1203490976]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-
-[node name="SynthToast" type="Label" parent="Frame" unique_id=491765641]
-unique_name_in_owner = true
-visible = false
-layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -186.0
-offset_top = 78.0
-offset_right = 186.0
-offset_bottom = 120.0
-grow_horizontal = 2
-theme_override_colors/font_color = Color(1, 0.956863, 0.745098, 1)
-theme_override_colors/font_outline_color = Color(0.352941, 0.2, 0.062745, 1)
-theme_override_constants/outline_size = 2
-theme_override_font_sizes/font_size = 16
-theme_override_styles/normal = SubResource("StyleBoxFlat_toast")
-text = "合成成功"
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="DetailPopup" type="PopupPanel" parent="." unique_id=1781527274]
 unique_name_in_owner = true
 size = Vector2i(340, 360)
@@ -815,8 +629,6 @@ autowrap_mode = 3
 
 [connection signal="pressed" from="Frame/RootMargin/BaseRoot/UpperArea/MarginContainer/StatsBlock/PowerRow/DetailBtn" to="." method="_show_attr_popup"]
 [connection signal="pressed" from="Frame/RootMargin/BaseRoot/SynthRow/SynthBtn" to="." method="_on_synthesis_pressed"]
-[connection signal="pressed" from="Frame/SynthesisRoot/MidPanel/MidMargin/MidCenter/SynthComposeButton" to="." method="_on_synth_compose_pressed"]
-[connection signal="pressed" from="Frame/SynthesisRoot/BottomRow/SynthBackButton" to="." method="_close_synthesis_view"]
 [connection signal="pressed" from="DetailPopup/Margin/VBox/ActionRow/BtnEquip" to="." method="_on_detail_equip"]
 [connection signal="pressed" from="DetailPopup/Margin/VBox/ActionRow/BtnUnequip" to="." method="_on_detail_unequip"]
 [connection signal="pressed" from="DetailPopup/Margin/VBox/ActionRow/BtnUpgrade" to="." method="_on_detail_upgrade"]
